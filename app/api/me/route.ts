@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const adminClient = createAdminClient();
     const { data: profile, error } = await adminClient
       .from("users")
-      .select("id, full_name, email, role, department_id, unit_id, active, created_at, updated_at")
+      .select("id, full_name, username, phone, email, role, department_id, unit_id, active, must_change_password, created_at, updated_at")
       .eq("id", user.id)
       .single();
 

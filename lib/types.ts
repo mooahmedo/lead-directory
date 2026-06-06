@@ -61,13 +61,26 @@ export interface Visit {
 export interface UserProfile {
   id: string;
   full_name: string;
+  username?: string;
+  phone?: string;
   email: string;
   role: 'nurse' | 'supervisor' | 'coordinator';
   department_id?: string;
   unit_id?: string;
   active: boolean;
+  must_change_password?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action_type: string;
+  entity_type: string;
+  entity_id: string;
+  performed_by: string;
+  details: any;
+  created_at: string;
 }
 
 export interface VisitSubmission {

@@ -87,7 +87,7 @@ async function resilientFetch<T>(url: string, options?: RequestInit, retries = 2
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Page() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [view, setView] = useState<"login" | "dashboard" | "visits" | "patients" | "departments-units" | "users">("login");
+  const [view, setView] = useState<"login" | "change-password" | "dashboard" | "visits" | "patients" | "departments-units" | "users">("login");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
@@ -204,7 +204,23 @@ export default function Page() {
   }
 
   if (view === "login" || !profile) {
-    return <SupervisorLogin onSuccess={fetchAndSetProfile} />;
+    return <SystemLogin onSuccess={async () => {
+      const p = await fetchAndSetProfile(true);
+      if (p?.must_change_password) {
+        setView("change-password");
+      } else if (p) {
+        setView(p.role === "nurse" ? "visits" : "dashboard");
+      } else {
+        setView("login");
+      }
+    }} onViewChange={setView} />;
+  }
+
+  if (view === "change-password") {
+    return <ChangePasswordView profile={profile} onSuccess={() => {
+      setProfile(prev => prev ? { ...prev, must_change_password: false } : null);
+      setView(profile.role === "nurse" ? "visits" : "dashboard");
+    }} />;
   }
 
   // Sidebar navigation options based on role
@@ -290,7 +306,7 @@ export default function Page() {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold truncate text-white leading-tight">{profile.full_name}</p>
               <p className="text-[10px] text-emerald-400 capitalize truncate mt-0.5">
-                {profile.role === "supervisor" ? "مشرف المبادرة" : profile.role === "coordinator" ? "منسق إدارة" : "ممرض / ممرضة"}
+                {profile.role === "supervisor" ? "منسق عام المبادرة" : profile.role === "coordinator" ? "منسق إدارة" : "ممرض / ممرضة"}
               </p>
             </div>
           </div>
@@ -365,35 +381,38 @@ export default function Page() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SUPERVISOR LOGIN (Unified Login Page)
+// SYSTEM LOGIN (Username + Password)
 // ═══════════════════════════════════════════════════════════════════════════════
-function SupervisorLogin({ onSuccess }: { onSuccess: () => Promise<any> }) {
-  const [email, setEmail] = useState("");
+function SystemLogin({ onSuccess, onViewChange }: { onSuccess: () => Promise<void>; onViewChange: (v: any) => void }) {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      toast.error("يرجى إدخال البريد الإلكتروني وكلمة المرور");
+    if (!username || !password) {
+      toast.error("يرجى إدخال اسم المستخدم وكلمة المرور");
       return;
     }
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message);
+      // Step 1: Look up email by username
+      const lookupRes = await fetch("/api/auth/lookup-username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim().toLowerCase() }),
+      });
+      const lookupData = await lookupRes.json();
+      if (!lookupRes.ok) throw new Error(lookupData.error || "اسم المستخدم غير صحيح");
 
-      // After successful auth, fetch profile via server API (bypasses RLS)
-      // and let the parent update view state
-      const userProf = await onSuccess();
-      if (!userProf) {
-        // Auth succeeded but no public.users profile found — trigger did not run
-        throw new Error("لم يتم العثور على ملف المستخدم. تأكد من تطبيق migration 002_auth_trigger_rls.sql في Supabase");
-      }
-      toast.success(`مرحباً ${userProf.full_name}، تم تسجيل الدخول بنجاح`);
+      // Step 2: Sign in with the resolved email
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email: lookupData.email, password });
+      if (error) throw new Error("كلمة المرور غير صحيحة");
+
+      // Step 3: Call parent to set profile and redirect
+      await onSuccess();
     } catch (err: any) {
-      // Sign out if profile fetch failed so user is not stuck
       const supabase = createClient();
       await supabase.auth.signOut().catch(() => {});
       toast.error("فشل تسجيل الدخول", { description: err.message });
@@ -411,7 +430,7 @@ function SupervisorLogin({ onSuccess }: { onSuccess: () => Promise<any> }) {
             <Heart className="w-9 h-9 text-emerald-400 fill-emerald-400" />
           </div>
           <h2 className="text-2xl font-black text-white leading-tight">مبادرة الأمراض المزمنة</h2>
-          <p className="text-sm text-emerald-200/80 mt-2">محافظة سوهاج — تسجيل الدخول الموحد</p>
+          <p className="text-sm text-emerald-200/80 mt-2">مديرية الصحة بسوهاج — تسجيل الدخول</p>
         </div>
 
         <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-3xl overflow-hidden">
@@ -420,16 +439,17 @@ function SupervisorLogin({ onSuccess }: { onSuccess: () => Promise<any> }) {
           </CardHeader>
           <CardContent className="pt-6 pb-6 px-6 space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-semibold text-gray-700">البريد الإلكتروني</Label>
+              <Label className="text-sm font-semibold text-gray-700">اسم المستخدم</Label>
               <Input
-                type="email"
-                placeholder="email@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="h-11 text-sm border-gray-200 focus:border-emerald-500 ltr-input"
+                type="text"
+                placeholder="مثال: nurse_shg001"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                className="h-11 text-sm border-gray-200 focus:border-emerald-500"
                 dir="ltr"
                 style={{ direction: "ltr", textAlign: "left" }}
                 onKeyDown={e => e.key === "Enter" && handleLogin()}
+                autoComplete="username"
               />
             </div>
 
@@ -441,10 +461,11 @@ function SupervisorLogin({ onSuccess }: { onSuccess: () => Promise<any> }) {
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="h-11 text-sm border-gray-200 focus:border-emerald-500 ltr-input pr-10"
+                  className="h-11 text-sm border-gray-200 focus:border-emerald-500 pr-10"
                   dir="ltr"
                   style={{ direction: "ltr", textAlign: "left" }}
                   onKeyDown={e => e.key === "Enter" && handleLogin()}
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -472,6 +493,127 @@ function SupervisorLogin({ onSuccess }: { onSuccess: () => Promise<any> }) {
                   <span>دخول</span>
                 </div>
               )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FORCE CHANGE PASSWORD VIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSuccess: () => void }) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = async () => {
+    if (!newPassword || newPassword.length < 8) {
+      toast.error("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("كلمتا المرور غير متطابقتين");
+      return;
+    }
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw new Error(error.message);
+
+      // Clear the must_change_password flag via API
+      await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: profile.id, mustChangePassword: false }),
+      });
+
+      toast.success("تم تغيير كلمة المرور بنجاح");
+      onSuccess();
+    } catch (err: any) {
+      toast.error("فشل تغيير كلمة المرور", { description: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-950 p-4" dir="rtl">
+      <Toaster position="top-center" richColors dir="rtl" />
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-amber-500/20 rounded-2xl flex items-center justify-center shadow-lg border border-amber-400/30 mb-4">
+            <Shield className="w-9 h-9 text-amber-400" />
+          </div>
+          <h2 className="text-2xl font-black text-white leading-tight">تغيير كلمة المرور</h2>
+          <p className="text-sm text-emerald-200/80 mt-2">يجب تغيير كلمة المرور المؤقتة قبل المتابعة</p>
+        </div>
+
+        <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-3xl overflow-hidden">
+          <CardHeader className="bg-amber-500 py-5 text-center text-white">
+            <CardTitle className="text-sm font-bold">مرحباً {profile.full_name} — أدخل كلمة مرور جديدة</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 pb-6 px-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold text-gray-700">كلمة المرور الجديدة *</Label>
+              <div className="relative">
+                <Input
+                  type={showNew ? "text" : "password"}
+                  placeholder="8 أحرف على الأقل"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="h-11 text-sm border-gray-200 focus:border-amber-500 pr-10"
+                  dir="ltr"
+                  style={{ direction: "ltr", textAlign: "left" }}
+                />
+                <button type="button" onClick={() => setShowNew(!showNew)} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold text-gray-700">تأكيد كلمة المرور *</Label>
+              <div className="relative">
+                <Input
+                  type={showConfirm ? "text" : "password"}
+                  placeholder="أعد إدخال كلمة المرور"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="h-11 text-sm border-gray-200 focus:border-amber-500 pr-10"
+                  dir="ltr"
+                  style={{ direction: "ltr", textAlign: "left" }}
+                  onKeyDown={e => e.key === "Enter" && handleChange()}
+                />
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {newPassword && (
+              <div className={`text-xs px-3 py-2 rounded-lg font-medium ${
+                newPassword === confirmPassword && newPassword.length >= 8
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-red-50 text-red-600"
+              }`}>
+                {newPassword.length < 8 ? "⚠ كلمة المرور قصيرة جداً" :
+                 newPassword !== confirmPassword ? "⚠ كلمتا المرور غير متطابقتين" :
+                 "✓ كلمة المرور مقبولة"}
+              </div>
+            )}
+
+            <Button
+              onClick={handleChange}
+              disabled={loading}
+              className="w-full h-12 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm transition-all"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "حفظ كلمة المرور الجديدة"}
             </Button>
           </CardContent>
         </Card>
@@ -1276,7 +1418,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// USERS MANAGEMENT VIEW (Supervisor only)
+// USERS MANAGEMENT VIEW (General Initiative Coordinator only)
 // ═══════════════════════════════════════════════════════════════════════════════
 function UsersView() {
   const [users, setUsers] = useState<any[]>([]);
@@ -1284,14 +1426,31 @@ function UsersView() {
   const [units, setUnits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [deletingUser, setDeletingUser] = useState<any>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Form states
+  // Add form states
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"nurse" | "supervisor" | "coordinator">("nurse");
   const [selectedDept, setSelectedDept] = useState("");
   const [selectedUnit, setSelectedUnit] = useState("");
+
+  // Edit form states
+  const [editFullName, setEditFullName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editRole, setEditRole] = useState<"nurse" | "supervisor" | "coordinator">("nurse");
+  const [editDept, setEditDept] = useState("");
+  const [editUnit, setEditUnit] = useState("");
+  const [editActive, setEditActive] = useState(true);
+  const [editLoading, setEditLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -1313,11 +1472,16 @@ function UsersView() {
     loadData();
   }, [loadData]);
 
-  // Filter units based on selected department for new user form
   const filteredUnits = units.filter(u => u.department_id === selectedDept);
+  const editFilteredUnits = units.filter(u => u.department_id === editDept);
+
+  const resetAddForm = () => {
+    setFullName(""); setUsername(""); setEmail(""); setPhone("");
+    setPassword(""); setRole("nurse"); setSelectedDept(""); setSelectedUnit("");
+  };
 
   const handleAddUser = async () => {
-    if (!fullName || !email || !password || !role) {
+    if (!fullName || !username || !email || !password || !role) {
       toast.error("يرجى ملء جميع الحقول المطلوبة");
       return;
     }
@@ -1326,10 +1490,7 @@ function UsersView() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName,
-          email,
-          password,
-          role,
+          fullName, username, email, phone, password, role,
           departmentId: selectedDept || null,
           unitId: selectedUnit || null,
         }),
@@ -1337,16 +1498,93 @@ function UsersView() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "فشل إضافة حساب المستخدم");
       toast.success("تم إنشاء حساب المستخدم بنجاح");
-      setFullName("");
-      setEmail("");
-      setPassword("");
-      setRole("nurse");
-      setSelectedDept("");
-      setSelectedUnit("");
+      resetAddForm();
       setIsAddUserOpen(false);
       loadData();
     } catch (err: any) {
       toast.error("فشل الإنشاء", { description: err.message });
+    }
+  };
+
+  const openEditModal = (u: any) => {
+    setEditingUser(u);
+    setEditFullName(u.full_name || "");
+    setEditUsername(u.username || "");
+    setEditEmail(u.email || "");
+    setEditPhone(u.phone || "");
+    setEditPassword("");
+    setEditRole(u.role);
+    setEditDept(u.department_id || "");
+    setEditUnit(u.unit_id || "");
+    setEditActive(u.active);
+  };
+
+  const handleEditUser = async () => {
+    if (!editingUser) return;
+    setEditLoading(true);
+    try {
+      const body: any = { id: editingUser.id };
+      if (editFullName !== editingUser.full_name) body.fullName = editFullName;
+      if (editUsername !== (editingUser.username || "")) body.username = editUsername;
+      if (editEmail !== editingUser.email) body.email = editEmail;
+      if (editPhone !== (editingUser.phone || "")) body.phone = editPhone;
+      if (editPassword) body.password = editPassword;
+      if (editRole !== editingUser.role) body.role = editRole;
+      if (editDept !== (editingUser.department_id || "")) body.departmentId = editDept || null;
+      if (editUnit !== (editingUser.unit_id || "")) body.unitId = editUnit || null;
+      if (editActive !== editingUser.active) body.active = editActive;
+
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "فشل تعديل بيانات المستخدم");
+      toast.success("تم تحديث بيانات المستخدم بنجاح");
+      setEditingUser(null);
+      loadData();
+    } catch (err: any) {
+      toast.error("فشل التحديث", { description: err.message });
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (userId: string, userName: string) => {
+    const tempPass = "Temp@" + Math.random().toString(36).slice(2, 8);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: userId, password: tempPass, mustChangePassword: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`تم إعادة تعيين كلمة مرور ${userName}`, {
+        description: `كلمة المرور المؤقتة: ${tempPass}`,
+        duration: 15000,
+      });
+      loadData();
+    } catch (err: any) {
+      toast.error("فشل إعادة تعيين كلمة المرور", { description: err.message });
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/users?id=${deletingUser.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "فشل حذف الحساب");
+      toast.success(`تم حذف حساب ${deletingUser.full_name} نهائياً`);
+      setDeletingUser(null);
+      loadData();
+    } catch (err: any) {
+      toast.error("فشل الحذف", { description: err.message });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -1371,9 +1609,10 @@ function UsersView() {
       {/* Action panel */}
       <div className="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
         <div>
-          <h3 className="text-xs font-bold text-gray-500">حسابات طاقم التمريض والمشرفين</h3>
+          <h3 className="text-xs font-bold text-gray-500">إدارة حسابات المستخدمين والممرضين</h3>
+          <p className="text-[10px] text-gray-400 mt-0.5">{users.length} حساب مسجل</p>
         </div>
-        <Button onClick={() => setIsAddUserOpen(true)} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
+        <Button onClick={() => { resetAddForm(); setIsAddUserOpen(true); }} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
           <Plus className="w-4 h-4" />
           إضافة حساب جديد
         </Button>
@@ -1386,177 +1625,230 @@ function UsersView() {
         </div>
       ) : (
         <Card className="border-0 shadow-md bg-white overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-gray-100 text-xs font-bold text-gray-500">
-                <th className="p-4">اسم المستخدم</th>
-                <th className="p-4">البريد الإلكتروني</th>
-                <th className="p-4">الصلاحية</th>
-                <th className="p-4">الجهة الطبية</th>
-                <th className="p-4 text-center">تاريخ الإنشاء</th>
-                <th className="p-4 text-center">الحالة</th>
-                <th className="p-4 text-center">الإجراءات</th>
+                <th className="p-3">الاسم</th>
+                <th className="p-3">اسم المستخدم</th>
+                <th className="p-3">الصلاحية</th>
+                <th className="p-3">الجهة</th>
+                <th className="p-3 text-center">الحالة</th>
+                <th className="p-3 text-center">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-gray-100">
               {users.map(u => (
                 <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-4 font-bold text-gray-800">{u.full_name}</td>
-                  <td className="p-4 font-mono text-gray-600">{u.email}</td>
-                  <td className="p-4">
+                  <td className="p-3">
+                    <p className="font-bold text-gray-800">{u.full_name}</p>
+                    <p className="text-[10px] text-gray-400 font-mono mt-0.5">{u.email}</p>
+                  </td>
+                  <td className="p-3 font-mono text-gray-600">{u.username || "—"}</td>
+                  <td className="p-3">
                     <Badge className={u.role === "supervisor" ? "bg-amber-50 text-amber-700 border-amber-100" : u.role === "coordinator" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"}>
-                      {u.role === "supervisor" ? "مشرف" : u.role === "coordinator" ? "منسق" : "تمريض"}
+                      {u.role === "supervisor" ? "منسق عام" : u.role === "coordinator" ? "منسق إدارة" : "تمريض"}
                     </Badge>
                   </td>
-                  <td className="p-4">
+                  <td className="p-3">
                     {u.health_units?.name ? (
                       <p className="leading-tight">{u.health_units.name} <span className="text-[10px] text-gray-400">({u.departments?.name})</span></p>
                     ) : u.departments?.name ? (
-                      `إدارة ${u.departments.name}`
+                      <span>{u.departments.name}</span>
                     ) : (
-                      <span className="text-gray-400">غير محدد (مديرية الصحة)</span>
+                      <span className="text-gray-400">مديرية الصحة</span>
                     )}
                   </td>
-                  <td className="p-4 text-center text-gray-400">{new Date(u.created_at).toLocaleDateString("ar-EG")}</td>
-                  <td className="p-4 text-center">
+                  <td className="p-3 text-center">
                     <Badge className={u.active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"}>
                       {u.active ? "نشط" : "معطل"}
                     </Badge>
                   </td>
-                  <td className="p-4 text-center">
-                    <Button
-                      onClick={() => toggleUserActive(u.id, u.active)}
-                      variant="outline"
-                      className={`text-[10px] px-2 h-7 gap-1.5 ${
-                        u.active
-                          ? "border-red-200 text-red-600 hover:bg-red-50"
-                          : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                      }`}
-                    >
-                      {u.active ? (
-                        <>
-                          <UserX className="w-3.5 h-3.5" />
-                          تعطيل الحساب
-                        </>
-                      ) : (
-                        <>
-                          <UserCheck className="w-3.5 h-3.5" />
-                          تفعيل الحساب
-                        </>
-                      )}
-                    </Button>
+                  <td className="p-3">
+                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                      <Button onClick={() => openEditModal(u)} variant="outline" className="text-[10px] px-2 h-7 gap-1 border-blue-200 text-blue-600 hover:bg-blue-50">
+                        <Edit2 className="w-3 h-3" /> تعديل
+                      </Button>
+                      <Button onClick={() => toggleUserActive(u.id, u.active)} variant="outline"
+                        className={`text-[10px] px-2 h-7 gap-1 ${u.active ? "border-red-200 text-red-600 hover:bg-red-50" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"}`}>
+                        {u.active ? <><UserX className="w-3 h-3" /> تعطيل</> : <><UserCheck className="w-3 h-3" /> تفعيل</>}
+                      </Button>
+                      <Button onClick={() => handleResetPassword(u.id, u.full_name)} variant="outline" className="text-[10px] px-2 h-7 gap-1 border-amber-200 text-amber-600 hover:bg-amber-50">
+                        <RefreshCw className="w-3 h-3" /> كلمة مرور
+                      </Button>
+                      <Button onClick={() => setDeletingUser(u)} variant="outline" className="text-[10px] px-2 h-7 gap-1 border-red-300 text-red-700 hover:bg-red-50">
+                        <XCircle className="w-3 h-3" /> حذف
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
 
-      {/* Add User Modal */}
+      {/* ── Add User Modal ── */}
       {isAddUserOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-sm border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <Card className="w-full max-w-md border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <CardHeader className="bg-emerald-800 text-white flex flex-row items-center justify-between p-4">
               <CardTitle className="text-sm font-bold">إنشاء حساب مستخدم جديد</CardTitle>
-              <button onClick={() => setIsAddUserOpen(false)} className="p-1 rounded-full hover:bg-white/10 text-white">
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={() => setIsAddUserOpen(false)} className="p-1 rounded-full hover:bg-white/10 text-white"><X className="w-4 h-4" /></button>
             </CardHeader>
-            <CardContent className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600 font-bold">الاسم بالكامل *</Label>
-                <Input
-                  placeholder="مثال: أسماء أحمد علي"
-                  value={fullName}
-                  onChange={e => setFullName(e.target.value)}
-                  className="h-10 text-xs border-gray-200 focus:border-emerald-500"
-                />
+            <CardContent className="p-5 space-y-3 max-h-[75vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الاسم بالكامل *</Label>
+                  <Input placeholder="أسماء أحمد علي" value={fullName} onChange={e => setFullName(e.target.value)} className="h-9 text-xs border-gray-200" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">اسم المستخدم *</Label>
+                  <Input placeholder="nurse_shg001" value={username} onChange={e => setUsername(e.target.value)} className="h-9 text-xs border-gray-200 font-mono" dir="ltr" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">البريد الإلكتروني *</Label>
+                  <Input placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">رقم الهاتف</Label>
+                  <Input placeholder="01xxxxxxxxx" value={phone} onChange={e => setPhone(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">كلمة المرور المؤقتة *</Label>
+                  <Input type="password" placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الصلاحية *</Label>
+                  <Select value={role} onValueChange={(val: any) => setRole(val)}>
+                    <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nurse" className="text-xs">ممرض / ممرضة</SelectItem>
+                      <SelectItem value="coordinator" className="text-xs">منسق إدارة</SelectItem>
+                      <SelectItem value="supervisor" className="text-xs">منسق عام المبادرة</SelectItem>
+                    </SelectContent>
+                  </Select></div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600 font-bold">البريد الإلكتروني *</Label>
-                <Input
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="h-10 text-xs border-gray-200 focus:border-emerald-500"
-                  dir="ltr"
-                />
+              {(role === "nurse" || role === "coordinator") && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الإدارة الصحية *</Label>
+                    <Select value={selectedDept} onValueChange={v => { setSelectedDept(v); setSelectedUnit(""); }}>
+                      <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="اختر الإدارة" /></SelectTrigger>
+                      <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>)}</SelectContent>
+                    </Select></div>
+                  {role === "nurse" && (
+                    <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الوحدة الصحية *</Label>
+                      <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedDept}>
+                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="اختر الوحدة" /></SelectTrigger>
+                        <SelectContent>{filteredUnits.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name}</SelectItem>)}</SelectContent>
+                      </Select></div>
+                  )}
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 text-[10px] text-amber-700 font-medium">
+                ⚠ سيُطلب من المستخدم تغيير كلمة المرور عند أول تسجيل دخول
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600 font-bold">كلمة المرور المؤقتة *</Label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="h-10 text-xs border-gray-200 focus:border-emerald-500"
-                  dir="ltr"
-                />
+              <div className="flex gap-2 pt-1">
+                <Button onClick={handleAddUser} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1">إنشاء الحساب</Button>
+                <Button onClick={() => setIsAddUserOpen(false)} variant="outline" size="sm" className="flex-1">إلغاء</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Edit User Modal ── */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <CardHeader className="bg-blue-700 text-white flex flex-row items-center justify-between p-4">
+              <CardTitle className="text-sm font-bold">تعديل بيانات: {editingUser.full_name}</CardTitle>
+              <button onClick={() => setEditingUser(null)} className="p-1 rounded-full hover:bg-white/10 text-white"><X className="w-4 h-4" /></button>
+            </CardHeader>
+            <CardContent className="p-5 space-y-3 max-h-[75vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الاسم بالكامل</Label>
+                  <Input value={editFullName} onChange={e => setEditFullName(e.target.value)} className="h-9 text-xs border-gray-200" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">اسم المستخدم</Label>
+                  <Input value={editUsername} onChange={e => setEditUsername(e.target.value)} className="h-9 text-xs border-gray-200 font-mono" dir="ltr" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">البريد الإلكتروني</Label>
+                  <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">رقم الهاتف</Label>
+                  <Input value={editPhone} onChange={e => setEditPhone(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">كلمة مرور جديدة (اختياري)</Label>
+                  <Input type="password" placeholder="اتركها فارغة إذا لا تريد التغيير" value={editPassword} onChange={e => setEditPassword(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الصلاحية</Label>
+                  <Select value={editRole} onValueChange={(val: any) => setEditRole(val)}>
+                    <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nurse" className="text-xs">ممرض / ممرضة</SelectItem>
+                      <SelectItem value="coordinator" className="text-xs">منسق إدارة</SelectItem>
+                      <SelectItem value="supervisor" className="text-xs">منسق عام المبادرة</SelectItem>
+                    </SelectContent>
+                  </Select></div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600 font-bold">الصلاحية ونوع المستخدم *</Label>
-                <Select value={role} onValueChange={(val: any) => setRole(val)}>
-                  <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
-                    <SelectValue />
-                  </SelectTrigger>
+              {(editRole === "nurse" || editRole === "coordinator") && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الإدارة الصحية</Label>
+                    <Select value={editDept} onValueChange={v => { setEditDept(v); setEditUnit(""); }}>
+                      <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="اختر الإدارة" /></SelectTrigger>
+                      <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>)}</SelectContent>
+                    </Select></div>
+                  {editRole === "nurse" && (
+                    <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الوحدة الصحية</Label>
+                      <Select value={editUnit} onValueChange={setEditUnit} disabled={!editDept}>
+                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="اختر الوحدة" /></SelectTrigger>
+                        <SelectContent>{editFilteredUnits.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name}</SelectItem>)}</SelectContent>
+                      </Select></div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-600 font-bold">حالة الحساب</Label>
+                <Select value={editActive ? "active" : "inactive"} onValueChange={v => setEditActive(v === "active")}>
+                  <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="nurse" className="text-xs">ممرض / ممرضة</SelectItem>
-                    <SelectItem value="coordinator" className="text-xs">منسق إدارة</SelectItem>
-                    <SelectItem value="supervisor" className="text-xs">مشرف المبادرة</SelectItem>
+                    <SelectItem value="active" className="text-xs">نشط</SelectItem>
+                    <SelectItem value="inactive" className="text-xs">معطل</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Show unit and department selections only for nurses or coordinators */}
-              {(role === "nurse" || role === "coordinator") && (
-                <>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 font-bold">الإدارة الصحية *</Label>
-                    <Select value={selectedDept} onValueChange={setSelectedDept}>
-                      <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
-                        <SelectValue placeholder="اختر الإدارة الصحية" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map(d => (
-                          <SelectItem key={d.id} value={d.id} className="text-xs">
-                            {d.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {role === "nurse" && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-gray-600 font-bold">الوحدة الصحية المعين بها *</Label>
-                      <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedDept}>
-                        <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
-                          <SelectValue placeholder="اختر الوحدة الصحية" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredUnits.map(u => (
-                            <SelectItem key={u.id} value={u.id} className="text-xs">
-                              {u.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                <Button onClick={handleAddUser} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1">
-                  إنشاء الحساب
+              <div className="flex gap-2 pt-1">
+                <Button onClick={handleEditUser} disabled={editLoading} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-1">
+                  {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "حفظ التعديلات"}
                 </Button>
-                <Button onClick={() => setIsAddUserOpen(false)} variant="outline" size="sm" className="flex-1">
-                  إلغاء
+                <Button onClick={() => setEditingUser(null)} variant="outline" size="sm" className="flex-1">إلغاء</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deletingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-sm border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <CardHeader className="bg-red-600 text-white flex flex-row items-center justify-between p-4">
+              <CardTitle className="text-sm font-bold">تأكيد الحذف النهائي</CardTitle>
+              <button onClick={() => setDeletingUser(null)} className="p-1 rounded-full hover:bg-white/10 text-white"><X className="w-4 h-4" /></button>
+            </CardHeader>
+            <CardContent className="p-5 space-y-4">
+              <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center space-y-2">
+                <XCircle className="w-10 h-10 text-red-500 mx-auto" />
+                <p className="text-sm font-bold text-red-800">هل أنت متأكد من حذف هذا الحساب نهائياً؟</p>
+                <p className="text-xs text-red-600">الاسم: <strong>{deletingUser.full_name}</strong></p>
+                <p className="text-xs text-red-600">البريد: <strong className="font-mono">{deletingUser.email}</strong></p>
+                <p className="text-[10px] text-red-500 mt-2">⚠ لا يمكن التراجع عن هذا الإجراء. سيتم تسجيل عملية الحذف في سجل التدقيق.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleDeleteUser} disabled={deleteLoading} size="sm" className="bg-red-600 hover:bg-red-700 text-white flex-1">
+                  {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "نعم، حذف نهائياً"}
                 </Button>
+                <Button onClick={() => setDeletingUser(null)} variant="outline" size="sm" className="flex-1">إلغاء</Button>
               </div>
             </CardContent>
           </Card>
@@ -1565,6 +1857,8 @@ function UsersView() {
     </div>
   );
 }
+
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REGISTRATION FORM SUB-VIEW (Original NurseView)
