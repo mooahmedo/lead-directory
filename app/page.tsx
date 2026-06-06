@@ -209,10 +209,10 @@ export default function Page() {
 
   // Sidebar navigation options based on role
   const menuItems = [
-    { id: "dashboard", label: "لوحة التحكم", icon: <Activity className="w-5 h-5" />, roles: ["supervisor"] },
-    { id: "visits", label: "تسجيل الزيارات", icon: <ClipboardList className="w-5 h-5" />, roles: ["nurse", "supervisor"] },
+    { id: "dashboard", label: "لوحة التحكم", icon: <Activity className="w-5 h-5" />, roles: ["supervisor", "coordinator"] },
+    { id: "visits", label: "تسجيل الزيارات", icon: <ClipboardList className="w-5 h-5" />, roles: ["nurse", "supervisor", "coordinator"] },
     { id: "patients", label: "قائمة المرضى", icon: <Users className="w-5 h-5" />, roles: ["supervisor"] },
-    { id: "departments-units", label: "الإدارات والوحدات", icon: <Building2 className="w-5 h-5" />, roles: ["supervisor"] },
+    { id: "departments-units", label: "الإدارات والوحدات", icon: <Building2 className="w-5 h-5" />, roles: ["supervisor", "coordinator"] },
     { id: "users", label: "المستخدمين", icon: <Shield className="w-5 h-5" />, roles: ["supervisor"] },
   ];
 
@@ -290,7 +290,7 @@ export default function Page() {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold truncate text-white leading-tight">{profile.full_name}</p>
               <p className="text-[10px] text-emerald-400 capitalize truncate mt-0.5">
-                {profile.role === "supervisor" ? "مشرف المبادرة" : "ممرض / ممرضة"}
+                {profile.role === "supervisor" ? "مشرف المبادرة" : profile.role === "coordinator" ? "منسق إدارة" : "ممرض / ممرضة"}
               </p>
             </div>
           </div>
@@ -356,7 +356,7 @@ export default function Page() {
           {view === "dashboard" && <SupervisorDashboard onLogout={() => {}} />}
           {view === "visits" && <VisitsView isOnline={isOnline} onPendingChange={setPendingCount} profile={profile} />}
           {view === "patients" && <PatientsView />}
-          {view === "departments-units" && <DepartmentsUnitsView />}
+          {view === "departments-units" && <DepartmentsUnitsView profile={profile} />}
           {view === "users" && <UsersView />}
         </main>
       </div>
@@ -492,22 +492,24 @@ function VisitsView({
   onPendingChange: (n: number) => void;
   profile: UserProfile;
 }) {
-  const [tab, setTab] = useState<"register" | "logs">("register");
+  const [tab, setTab] = useState<"register" | "logs">(profile.role === "coordinator" ? "logs" : "register");
 
   return (
     <div className="space-y-4">
-      {profile.role === "supervisor" && (
+      {(profile.role === "supervisor" || profile.role === "coordinator") && (
         <div className="flex border-b border-gray-200 max-w-md bg-white p-1 rounded-xl shadow-sm">
-          <button
-            onClick={() => setTab("register")}
-            className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all ${
-              tab === "register"
-                ? "bg-emerald-600 text-white"
-                : "text-gray-500 hover:text-gray-800 hover:bg-slate-50"
-            }`}
-          >
-            تسجيل زيارة جديدة
-          </button>
+          {profile.role !== "coordinator" && (
+            <button
+              onClick={() => setTab("register")}
+              className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all ${
+                tab === "register"
+                  ? "bg-emerald-600 text-white"
+                  : "text-gray-500 hover:text-gray-800 hover:bg-slate-50"
+              }`}
+            >
+              تسجيل زيارة جديدة
+            </button>
+          )}
           <button
             onClick={() => setTab("logs")}
             className={`flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all ${
@@ -522,7 +524,7 @@ function VisitsView({
       )}
 
       <div>
-        {profile.role === "nurse" || tab === "register" ? (
+        {profile.role === "nurse" || (tab === "register" && profile.role !== "coordinator") ? (
           <NurseView isOnline={isOnline} onPendingChange={onPendingChange} profile={profile} />
         ) : (
           <VisitsLog profile={profile} />
@@ -918,7 +920,7 @@ function MeasurementBox({ label, value, suffix, icon }: { label: string; value: 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DEPARTMENTS & UNITS VIEW (Supervisor only)
 // ═══════════════════════════════════════════════════════════════════════════════
-function DepartmentsUnitsView() {
+function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
   const [tab, setTab] = useState<"departments" | "units">("units");
   const [departments, setDepartments] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
@@ -953,6 +955,12 @@ function DepartmentsUnitsView() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (profile.role === "coordinator" && profile.department_id) {
+      setUnitDept(profile.department_id);
+    }
+  }, [profile]);
 
   const handleAddDept = async () => {
     if (!deptName) { toast.error("يرجى إدخال اسم الإدارة الصحية"); return; }
@@ -1034,14 +1042,16 @@ function DepartmentsUnitsView() {
           >
             الوحدات الصحية
           </button>
-          <button
-            onClick={() => setTab("departments")}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex-1 sm:flex-none text-center ${
-              tab === "departments" ? "bg-emerald-600 text-white" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            الإدارات الصحية
-          </button>
+          {profile.role !== "coordinator" && (
+            <button
+              onClick={() => setTab("departments")}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex-1 sm:flex-none text-center ${
+                tab === "departments" ? "bg-emerald-600 text-white" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              الإدارات الصحية
+            </button>
+          )}
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto">
@@ -1187,21 +1197,23 @@ function DepartmentsUnitsView() {
               </button>
             </CardHeader>
             <CardContent className="p-5 space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600 font-bold">الإدارة الصحية التابعة *</Label>
-                <Select value={unitDept} onValueChange={setUnitDept}>
-                  <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
-                    <SelectValue placeholder="اختر الإدارة الصحية" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map(d => (
-                      <SelectItem key={d.id} value={d.id} className="text-xs">
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {profile.role !== "coordinator" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-600 font-bold">الإدارة الصحية التابعة *</Label>
+                  <Select value={unitDept} onValueChange={setUnitDept}>
+                    <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
+                      <SelectValue placeholder="اختر الإدارة الصحية" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map(d => (
+                        <SelectItem key={d.id} value={d.id} className="text-xs">
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="text-xs text-gray-600 font-bold">كود الوحدة الصحية (فريد) *</Label>
@@ -1277,7 +1289,7 @@ function UsersView() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"nurse" | "supervisor">("nurse");
+  const [role, setRole] = useState<"nurse" | "supervisor" | "coordinator">("nurse");
   const [selectedDept, setSelectedDept] = useState("");
   const [selectedUnit, setSelectedUnit] = useState("");
 
@@ -1392,8 +1404,8 @@ function UsersView() {
                   <td className="p-4 font-bold text-gray-800">{u.full_name}</td>
                   <td className="p-4 font-mono text-gray-600">{u.email}</td>
                   <td className="p-4">
-                    <Badge className={u.role === "supervisor" ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"}>
-                      {u.role === "supervisor" ? "مشرف" : "تمريض"}
+                    <Badge className={u.role === "supervisor" ? "bg-amber-50 text-amber-700 border-amber-100" : u.role === "coordinator" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"}>
+                      {u.role === "supervisor" ? "مشرف" : u.role === "coordinator" ? "منسق" : "تمريض"}
                     </Badge>
                   </td>
                   <td className="p-4">
@@ -1493,13 +1505,14 @@ function UsersView() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="nurse" className="text-xs">ممرض / ممرضة</SelectItem>
+                    <SelectItem value="coordinator" className="text-xs">منسق إدارة</SelectItem>
                     <SelectItem value="supervisor" className="text-xs">مشرف المبادرة</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Show unit and department selections only for nurses */}
-              {role === "nurse" && (
+              {/* Show unit and department selections only for nurses or coordinators */}
+              {(role === "nurse" || role === "coordinator") && (
                 <>
                   <div className="space-y-1.5">
                     <Label className="text-xs text-gray-600 font-bold">الإدارة الصحية *</Label>
@@ -1517,21 +1530,23 @@ function UsersView() {
                     </Select>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 font-bold">الوحدة الصحية المعين بها *</Label>
-                    <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedDept}>
-                      <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
-                        <SelectValue placeholder="اختر الوحدة الصحية" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredUnits.map(u => (
-                          <SelectItem key={u.id} value={u.id} className="text-xs">
-                            {u.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {role === "nurse" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600 font-bold">الوحدة الصحية المعين بها *</Label>
+                      <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedDept}>
+                        <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
+                          <SelectValue placeholder="اختر الوحدة الصحية" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredUnits.map(u => (
+                            <SelectItem key={u.id} value={u.id} className="text-xs">
+                              {u.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </>
               )}
 

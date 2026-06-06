@@ -34,12 +34,30 @@ export async function GET(request: NextRequest) {
     const adminClient = createAdminClient();
     const { data: userProfile } = await adminClient
       .from('users')
-      .select('role')
+      .select('role, department_id')
       .eq('email', user.email)
       .single();
 
-    if (!userProfile || userProfile.role !== 'supervisor') {
-      return NextResponse.json({ error: 'غير مصرح — صلاحية المشرف مطلوبة' }, { status: 403 });
+    if (!userProfile || (userProfile.role !== 'supervisor' && userProfile.role !== 'coordinator')) {
+      return NextResponse.json({ error: 'غير مصرح — صلاحية المشرف أو المنسق مطلوبة' }, { status: 403 });
+    }
+
+    let unitIds: string[] = [];
+    if (userProfile.role === 'coordinator') {
+      if (!userProfile.department_id) {
+        return NextResponse.json({ error: 'غير مصرح — حساب المنسق غير مرتبط بإدارة' }, { status: 403 });
+      }
+      const { data: deptUnits } = await adminClient
+        .from('health_units')
+        .select('id')
+        .eq('department_id', userProfile.department_id);
+      
+      unitIds = (deptUnits || []).map((u: any) => u.id);
+      
+      // If no units, we might still proceed but results will be 0
+      if (unitIds.length === 0) {
+        unitIds = ['00000000-0000-0000-0000-000000000000'];
+      }
     }
 
     // Get today's date range
@@ -52,6 +70,31 @@ export async function GET(request: NextRequest) {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
     // Run all stats queries in parallel
+    let totalPatientsQuery = adminClient.from('patients').select('id', { count: 'exact', head: true });
+    let totalVisitsQuery = adminClient.from('visits').select('id', { count: 'exact', head: true });
+    let todayVisitsQuery = adminClient.from('visits').select('id', { count: 'exact', head: true }).gte('visit_date', todayStart).lt('visit_date', todayEnd);
+    let newPatientsQuery = adminClient.from('visits').select('id', { count: 'exact', head: true }).eq('visit_type', 'أول مرة');
+    let returningQuery = adminClient.from('visits').select('id', { count: 'exact', head: true }).eq('visit_type', 'متردد');
+    let referralsQuery = adminClient.from('visits').select('id', { count: 'exact', head: true }).eq('referred', true);
+    let activeUnitsQuery = adminClient.from('health_units').select('id', { count: 'exact', head: true }).eq('active', true);
+    let inactiveUnitsQuery = adminClient.from('health_units').select('id', { count: 'exact', head: true }).eq('active', false);
+    let unitStatsQuery = adminClient.from('health_units').select(`
+      id, code, name, department_id, daily_target, monthly_target, active,
+      departments!inner(name)
+    `).order('name');
+
+    if (userProfile.role === 'coordinator') {
+      totalVisitsQuery = totalVisitsQuery.in('unit_id', unitIds);
+      todayVisitsQuery = todayVisitsQuery.in('unit_id', unitIds);
+      newPatientsQuery = newPatientsQuery.in('unit_id', unitIds);
+      returningQuery = returningQuery.in('unit_id', unitIds);
+      referralsQuery = referralsQuery.in('unit_id', unitIds);
+      
+      activeUnitsQuery = activeUnitsQuery.eq('department_id', userProfile.department_id);
+      inactiveUnitsQuery = inactiveUnitsQuery.eq('department_id', userProfile.department_id);
+      unitStatsQuery = unitStatsQuery.eq('department_id', userProfile.department_id);
+    }
+
     const [
       totalPatientsRes,
       totalVisitsRes,
@@ -63,41 +106,37 @@ export async function GET(request: NextRequest) {
       inactiveUnitsRes,
       unitStatsRes,
     ] = await Promise.all([
-      adminClient.from('patients').select('id', { count: 'exact', head: true }),
-      adminClient.from('visits').select('id', { count: 'exact', head: true }),
-      adminClient.from('visits').select('id', { count: 'exact', head: true })
-        .gte('visit_date', todayStart).lt('visit_date', todayEnd),
-      adminClient.from('visits').select('id', { count: 'exact', head: true })
-        .eq('visit_type', 'أول مرة'),
-      adminClient.from('visits').select('id', { count: 'exact', head: true })
-        .eq('visit_type', 'متردد'),
-      adminClient.from('visits').select('id', { count: 'exact', head: true })
-        .eq('referred', true),
-      adminClient.from('health_units').select('id', { count: 'exact', head: true })
-        .eq('active', true),
-      adminClient.from('health_units').select('id', { count: 'exact', head: true })
-        .eq('active', false),
-      // Unit stats with department info and today's visit counts
-      adminClient.from('health_units')
-        .select(`
-          id, code, name, department_id, daily_target, monthly_target, active,
-          departments!inner(name)
-        `)
-        .order('name'),
+      totalPatientsQuery,
+      totalVisitsQuery,
+      todayVisitsQuery,
+      newPatientsQuery,
+      returningQuery,
+      referralsQuery,
+      activeUnitsQuery,
+      inactiveUnitsQuery,
+      unitStatsQuery,
     ]);
 
     // Get today's visit counts per unit
-    const { data: todayUnitVisits } = await adminClient
+    let todayUnitVisitsQuery = adminClient
       .from('visits')
       .select('unit_id')
       .gte('visit_date', todayStart)
       .lt('visit_date', todayEnd);
 
     // Get this month's visit counts per unit
-    const { data: monthUnitVisits } = await adminClient
+    let monthUnitVisitsQuery = adminClient
       .from('visits')
       .select('unit_id')
       .gte('visit_date', monthStart);
+
+    if (userProfile.role === 'coordinator') {
+      todayUnitVisitsQuery = todayUnitVisitsQuery.in('unit_id', unitIds);
+      monthUnitVisitsQuery = monthUnitVisitsQuery.in('unit_id', unitIds);
+    }
+
+    const { data: todayUnitVisits } = await todayUnitVisitsQuery;
+    const { data: monthUnitVisits } = await monthUnitVisitsQuery;
 
     // Build unit visit count maps
     const todayUnitMap: Record<string, number> = {};
@@ -125,7 +164,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       stats: {
-        totalPatients: totalPatientsRes.count || 0,
+        totalPatients: userProfile.role === 'coordinator' ? (newPatientsRes.count || 0) : (totalPatientsRes.count || 0),
         totalVisits: totalVisitsRes.count || 0,
         todayVisits: todayVisitsRes.count || 0,
         activeUnits: activeUnitsRes.count || 0,

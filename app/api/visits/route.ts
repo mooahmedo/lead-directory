@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const adminClient = createAdminClient();
     const { data: profile } = await adminClient
       .from("users")
-      .select("id, role, active, unit_id")
+      .select("id, role, active, unit_id, department_id")
       .eq("id", user.id)
       .single();
 
@@ -37,14 +37,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "الحساب غير نشط أو غير موجود" }, { status: 403 });
     }
 
-    if (profile.role !== "supervisor") {
-      return NextResponse.json({ error: "غير مصرح — صلاحية المشرف مطلوبة" }, { status: 403 });
+    if (profile.role !== "supervisor" && profile.role !== "coordinator") {
+      return NextResponse.json({ error: "غير مصرح — صلاحية المشرف أو المنسق مطلوبة" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     let unitId = searchParams.get("unitId");
     let departmentId = searchParams.get("departmentId");
+    
+    if (profile.role === "coordinator") {
+      departmentId = profile.department_id;
+    }
 
     let query = adminClient
       .from("visits")

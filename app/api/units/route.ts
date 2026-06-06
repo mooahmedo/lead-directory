@@ -26,7 +26,7 @@ async function getCallerProfile(request: NextRequest) {
   const adminClient = createAdminClient();
   const { data: profile } = await adminClient
     .from("users")
-    .select("id, role, active")
+    .select("id, role, active, department_id")
     .eq("id", user.id)
     .single();
 
@@ -36,8 +36,13 @@ async function getCallerProfile(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const departmentId = searchParams.get("departmentId");
+    let departmentId = searchParams.get("departmentId");
     const includeInactive = searchParams.get("includeInactive") === "true";
+
+    const profile = await getCallerProfile(request);
+    if (profile?.role === "coordinator") {
+      departmentId = profile.department_id;
+    }
 
     const supabase = createAdminClient();
 
@@ -69,12 +74,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const profile = await getCallerProfile(request);
-    if (!profile || profile.role !== "supervisor" || !profile.active) {
-      return NextResponse.json({ error: "غير مصرح — صلاحية المشرف مطلوبة" }, { status: 403 });
+    if (!profile || (profile.role !== "supervisor" && profile.role !== "coordinator") || !profile.active) {
+      return NextResponse.json({ error: "غير مصرح — صلاحية المشرف أو المنسق مطلوبة" }, { status: 403 });
     }
 
     const body = await request.json();
-    const { code, name, departmentId, dailyTarget, monthlyTarget } = body;
+    let { code, name, departmentId, dailyTarget, monthlyTarget } = body;
+
+    if (profile.role === "coordinator") {
+      departmentId = profile.department_id;
+    }
 
     if (!code || !name || !departmentId) {
       return NextResponse.json({ error: "كود الوحدة، الاسم، والقسم حقول مطلوبة" }, { status: 400 });
@@ -108,8 +117,8 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const profile = await getCallerProfile(request);
-    if (!profile || profile.role !== "supervisor" || !profile.active) {
-      return NextResponse.json({ error: "غير مصرح — صلاحية المشرف مطلوبة" }, { status: 403 });
+    if (!profile || (profile.role !== "supervisor" && profile.role !== "coordinator") || !profile.active) {
+      return NextResponse.json({ error: "غير مصرح — صلاحية المشرف أو المنسق مطلوبة" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -120,6 +129,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const adminClient = createAdminClient();
+
+    if (profile.role === "coordinator") {
+      const { data: existingUnit } = await adminClient.from("health_units").select("department_id").eq("id", id).single();
+      if (!existingUnit || existingUnit.department_id !== profile.department_id) {
+         return NextResponse.json({ error: "غير مصرح — الوحدة الصحية لا تتبع لإدارتك" }, { status: 403 });
+      }
+    }
     const updateData: any = {};
     if (code) updateData.code = code;
     if (name) updateData.name = name;

@@ -62,7 +62,7 @@ export interface UserProfile {
   id: string;
   full_name: string;
   email: string;
-  role: 'nurse' | 'supervisor';
+  role: 'nurse' | 'supervisor' | 'coordinator';
   department_id?: string;
   unit_id?: string;
   active: boolean;
