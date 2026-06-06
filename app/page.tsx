@@ -11,7 +11,7 @@ import {
   TrendingUp, AlertCircle, CheckCircle2, XCircle, Loader2,
   ArrowUpRight, Shield, Eye, EyeOff, ClipboardList, Stethoscope,
   FlaskConical, Droplets, Weight, Ruler, Menu, X, Plus, Edit2,
-  UserCheck, UserX, FileText, CheckCircle, Info
+  UserCheck, UserX, FileText, CheckCircle, Info, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger
 } from "@/components/ui/collapsible";
+import * as XLSX from "xlsx";
 
 // ─── Offline Queue ────────────────────────────────────────────────────────────
 const OFFLINE_QUEUE_KEY = "cdms_offline_queue";
@@ -637,10 +638,47 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
   const [search, setSearch] = useState("");
   const [selectedVisit, setSelectedVisit] = useState<any | null>(null);
 
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [units, setUnits] = useState<HealthUnit[]>([]);
+  const [selectedDept, setSelectedDept] = useState("");
+  const [selectedUnit, setSelectedUnit] = useState("");
+
+  useEffect(() => {
+    const loadDepts = async () => {
+      try {
+        const depts = await resilientFetch<Department[]>("/api/departments");
+        setDepartments(depts);
+      } catch {}
+    };
+    loadDepts();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDept || selectedDept === "all") {
+      setUnits([]);
+      setSelectedUnit("");
+      return;
+    }
+    const loadUnits = async () => {
+      try {
+        const data = await resilientFetch<HealthUnit[]>(`/api/units?departmentId=${selectedDept}`);
+        setUnits(data);
+      } catch {}
+    };
+    setSelectedUnit("");
+    loadUnits();
+  }, [selectedDept]);
+
   const loadVisits = useCallback(async () => {
     setLoading(true);
     try {
-      const url = search ? `/api/visits?search=${encodeURIComponent(search)}` : "/api/visits";
+      let url = "/api/visits?";
+      const params = new URLSearchParams();
+      if (search) params.append("search", search);
+      if (selectedDept && selectedDept !== "all") params.append("departmentId", selectedDept);
+      if (selectedUnit && selectedUnit !== "all") params.append("unitId", selectedUnit);
+      url += params.toString();
+
       const data = await resilientFetch<any[]>(url);
       setVisits(data);
     } catch (err: any) {
@@ -648,28 +686,92 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, selectedDept, selectedUnit]);
 
   useEffect(() => {
     loadVisits();
   }, [loadVisits]);
 
+  const handleExportExcel = () => {
+    if (visits.length === 0) {
+      toast.error("لا يوجد بيانات لتصديرها");
+      return;
+    }
+
+    const dataToExport = visits.map(v => ({
+      "اسم المريض": v.patients?.full_name,
+      "الرقم القومي": v.patients?.national_id,
+      "رقم الهاتف": v.patients?.phone || "",
+      "الإدارة الصحية": departments.find(d => d.id === v.health_units?.department_id)?.name || (selectedDept && selectedDept !== "all" ? departments.find(d => d.id === selectedDept)?.name : ""),
+      "الوحدة الصحية": v.health_units?.name,
+      "نوع الزيارة": v.visit_type,
+      "تاريخ الزيارة": new Date(v.visit_date).toLocaleDateString("ar-EG"),
+      "وقت الزيارة": new Date(v.visit_date).toLocaleTimeString("ar-EG", { hour: '2-digit', minute: '2-digit' }),
+      "الضغط الانقباضي": v.systolic || "",
+      "الضغط الانبساطي": v.diastolic || "",
+      "نوع السكر": v.sugar_type || "",
+      "مستوى السكر": v.sugar_level || "",
+      "تراكمي HbA1c": v.hba1c || "",
+      "الطول": v.height || "",
+      "الوزن": v.weight || "",
+      "الإحالة": v.referred ? `محول إلى ${v.referral_dest || "مستشفى"}` : "لا يوجد",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "الزيارات");
+    XLSX.writeFile(workbook, "Visits_History.xlsx");
+  };
+
   return (
     <div className="space-y-4">
-      {/* Filter and search */}
-      <div className="flex gap-2 max-w-md">
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="ابحث باسم المريض أو الرقم القومي..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="h-10 text-xs pr-10 border-gray-200 focus:border-emerald-500 bg-white"
-          />
+      {/* Filters and Actions */}
+      <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 flex-1">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="ابحث بالمريض أو الرقم القومي..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="h-10 text-xs pr-10 border-gray-200 focus:border-emerald-500 bg-white w-full"
+            />
+          </div>
+          <Select value={selectedDept} onValueChange={setSelectedDept}>
+            <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
+              <SelectValue placeholder="تصفية بالإدارة الصحية" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">كل الإدارات</SelectItem>
+              {departments.map(d => (
+                <SelectItem key={d.id} value={d.id} className="text-xs">
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedDept || selectedDept === "all"}>
+            <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
+              <SelectValue placeholder="تصفية بالوحدة الصحية" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">كل الوحدات</SelectItem>
+              {units.map(u => (
+                <SelectItem key={u.id} value={u.id} className="text-xs">
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-2">
+            <Button onClick={loadVisits} className="bg-emerald-600 hover:bg-emerald-700 h-10 px-4 flex-1 text-xs">
+              تصفية
+            </Button>
+            <Button onClick={handleExportExcel} variant="outline" className="h-10 px-3 border-emerald-200 text-emerald-700 hover:bg-emerald-50" title="تصدير للإكسيل">
+              <Download className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-        <Button onClick={loadVisits} size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-10 px-4">
-          بحث
-        </Button>
       </div>
 
       {loading ? (

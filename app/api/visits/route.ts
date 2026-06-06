@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     let unitId = searchParams.get("unitId");
+    let departmentId = searchParams.get("departmentId");
 
     let query = adminClient
       .from("visits")
@@ -56,15 +57,20 @@ export async function GET(request: NextRequest) {
           age,
           gender
         ),
-        health_units (
+        health_units!inner (
           name,
-          code
+          code,
+          department_id
         )
       `)
       .order("visit_date", { ascending: false });
 
     if (unitId) {
       query = query.eq("unit_id", unitId);
+    }
+
+    if (departmentId) {
+      query = query.eq("health_units.department_id", departmentId);
     }
 
     const { data: visits, error } = await query.limit(200);
