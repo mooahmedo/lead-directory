@@ -54,6 +54,7 @@ export interface Visit {
   egfr?: number;
   referred: boolean;
   referral_dest?: string;
+  created_by?: string;
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +70,7 @@ export interface UserProfile {
   unit_id?: string;
   active: boolean;
   must_change_password?: boolean;
+  last_login?: string;
   created_at: string;
   updated_at: string;
 }

@@ -1429,6 +1429,21 @@ function UsersView() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // Advanced search & filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [deptFilter, setDeptFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Bulk actions
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Activity Log
+  const [activityUser, setActivityUser] = useState<any>(null);
+  const [activityData, setActivityData] = useState<any>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
 
   // Add form states
   const [fullName, setFullName] = useState("");
@@ -1465,6 +1480,7 @@ function UsersView() {
       toast.error("فشل تحميل قائمة المستخدمين", { description: err.message });
     } finally {
       setLoading(false);
+      setSelectedUsers(new Set());
     }
   }, []);
 
@@ -1474,6 +1490,38 @@ function UsersView() {
 
   const filteredUnits = units.filter(u => u.department_id === selectedDept);
   const editFilteredUnits = units.filter(u => u.department_id === editDept);
+
+  // Apply filters
+  const filteredUsers = users.filter(u => {
+    let match = true;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      match = match && (
+        (u.full_name && u.full_name.toLowerCase().includes(term)) ||
+        (u.username && u.username.toLowerCase().includes(term)) ||
+        (u.email && u.email.toLowerCase().includes(term)) ||
+        (u.departments?.name && u.departments.name.toLowerCase().includes(term)) ||
+        (u.health_units?.name && u.health_units.name.toLowerCase().includes(term))
+      );
+    }
+    if (roleFilter !== "all") {
+      match = match && u.role === roleFilter;
+    }
+    if (deptFilter !== "all") {
+      match = match && u.department_id === deptFilter;
+    }
+    if (statusFilter !== "all") {
+      const isActive = statusFilter === "active";
+      match = match && u.active === isActive;
+    }
+    return match;
+  });
+
+  const totalUsers = users.length;
+  const activeUsers = users.filter(u => u.active).length;
+  const inactiveUsers = totalUsers - activeUsers;
+  const nursesCount = users.filter(u => u.role === "nurse").length;
+  const coordinatorsCount = users.filter(u => u.role === "coordinator").length;
 
   const resetAddForm = () => {
     setFullName(""); setUsername(""); setEmail(""); setPhone("");
@@ -1604,20 +1652,201 @@ function UsersView() {
     }
   };
 
+  // Bulk Actions
+  const handleBulkAction = async (action: string) => {
+    if (selectedUsers.size === 0) return;
+    setBulkLoading(true);
+    try {
+      const res = await fetch("/api/users/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userIds: Array.from(selectedUsers), action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      toast.success(data.message, {
+        description: data.tempPassword ? `كلمة المرور المؤقتة: ${data.tempPassword}` : undefined,
+        duration: data.tempPassword ? 15000 : 4000,
+      });
+      loadData();
+    } catch (err: any) {
+      toast.error("فشل الإجراء المجمع", { description: err.message });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const exportToExcel = () => {
+    const data = filteredUsers.map(u => ({
+      "الاسم بالكامل": u.full_name,
+      "اسم المستخدم": u.username || "",
+      "البريد الإلكتروني": u.email,
+      "رقم الهاتف": u.phone || "",
+      "الصلاحية": u.role === "supervisor" ? "منسق عام" : u.role === "coordinator" ? "منسق إدارة" : "ممرض / ممرضة",
+      "الإدارة الصحية": u.departments?.name || "",
+      "الوحدة الصحية": u.health_units?.name || "",
+      "حالة الحساب": u.active ? "نشط" : "معطل",
+      "حالة كلمة المرور": u.must_change_password ? "مؤقتة" : "تم التغيير",
+      "آخر تسجيل دخول": u.last_login ? new Date(u.last_login).toLocaleString("ar-EG") : "لم يسجل دخول",
+      "تاريخ الإنشاء": new Date(u.created_at).toLocaleString("ar-EG")
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "المستخدمين");
+    XLSX.writeFile(wb, "users_export.xlsx");
+  };
+
+  // Activity Log Modal
+  const loadActivityLog = async (u: any) => {
+    setActivityUser(u);
+    setActivityLoading(true);
+    setActivityData(null);
+    try {
+      const res = await fetch(`/api/users/${u.id}/activity`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setActivityData(data);
+    } catch (err: any) {
+      toast.error("فشل تحميل سجل النشاط", { description: err.message });
+      setActivityUser(null);
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedUsers.size === filteredUsers.length && filteredUsers.length > 0) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(filteredUsers.map(u => u.id)));
+    }
+  };
+
+  const toggleSelectUser = (id: string) => {
+    const newSet = new Set(selectedUsers);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedUsers(newSet);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Action panel */}
-      <div className="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-        <div>
-          <h3 className="text-xs font-bold text-gray-500">إدارة حسابات المستخدمين والممرضين</h3>
-          <p className="text-[10px] text-gray-400 mt-0.5">{users.length} حساب مسجل</p>
-        </div>
-        <Button onClick={() => { resetAddForm(); setIsAddUserOpen(true); }} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
-          <Plus className="w-4 h-4" />
-          إضافة حساب جديد
-        </Button>
+      {/* ── Statistics Cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
+          <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
+            <Users className="w-6 h-6 text-emerald-600 mb-1" />
+            <p className="text-2xl font-black text-gray-800">{totalUsers}</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">إجمالي المستخدمين</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
+          <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
+            <CheckCircle2 className="w-6 h-6 text-green-500 mb-1" />
+            <p className="text-2xl font-black text-gray-800">{activeUsers}</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">حسابات نشطة</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
+          <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
+            <XCircle className="w-6 h-6 text-red-500 mb-1" />
+            <p className="text-2xl font-black text-gray-800">{inactiveUsers}</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">حسابات معطلة</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
+          <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
+            <Activity className="w-6 h-6 text-blue-500 mb-1" />
+            <p className="text-2xl font-black text-gray-800">{nursesCount}</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">تمريض</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
+          <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
+            <Shield className="w-6 h-6 text-amber-500 mb-1" />
+            <p className="text-2xl font-black text-gray-800">{coordinatorsCount}</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">منسقي الإدارات</p>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* ── Filters & Actions Bar ── */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="بحث بالاسم، اسم المستخدم، البريد، الإدارة..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="h-10 text-xs pr-10 border-gray-200 focus:border-emerald-500 bg-slate-50"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="h-10 text-xs w-32 bg-slate-50 border-gray-200">
+                <SelectValue placeholder="الصلاحية" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">الكل</SelectItem>
+                <SelectItem value="nurse" className="text-xs">تمريض</SelectItem>
+                <SelectItem value="coordinator" className="text-xs">منسق إدارة</SelectItem>
+                <SelectItem value="supervisor" className="text-xs">منسق عام</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={deptFilter} onValueChange={setDeptFilter}>
+              <SelectTrigger className="h-10 text-xs w-32 bg-slate-50 border-gray-200">
+                <SelectValue placeholder="الإدارة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">كل الإدارات</SelectItem>
+                {departments.map(d => (
+                  <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-10 text-xs w-32 bg-slate-50 border-gray-200">
+                <SelectValue placeholder="الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">جميع الحالات</SelectItem>
+                <SelectItem value="active" className="text-xs">نشط</SelectItem>
+                <SelectItem value="inactive" className="text-xs">معطل</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={exportToExcel} variant="outline" size="sm" className="h-10 text-xs gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+              <Download className="w-4 h-4" /> تصدير Excel
+            </Button>
+            <Button onClick={() => { resetAddForm(); setIsAddUserOpen(true); }} size="sm" className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 px-4">
+              <Plus className="w-4 h-4" /> إضافة حساب
+            </Button>
+          </div>
+        </div>
+
+        {/* Bulk Actions Menu */}
+        {selectedUsers.size > 0 && (
+          <div className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-xl animate-in fade-in slide-in-from-top-2">
+            <span className="text-xs font-bold text-blue-800">
+              تم تحديد ({selectedUsers.size}) مستخدم
+            </span>
+            <div className="flex gap-2">
+              <Button onClick={() => handleBulkAction("activate")} disabled={bulkLoading} size="sm" variant="outline" className="h-8 text-xs bg-white border-green-200 text-green-700 hover:bg-green-50">
+                <CheckCircle2 className="w-3 h-3 ml-1" /> تفعيل
+              </Button>
+              <Button onClick={() => handleBulkAction("deactivate")} disabled={bulkLoading} size="sm" variant="outline" className="h-8 text-xs bg-white border-red-200 text-red-700 hover:bg-red-50">
+                <XCircle className="w-3 h-3 ml-1" /> تعطيل
+              </Button>
+              <Button onClick={() => handleBulkAction("reset_password")} disabled={bulkLoading} size="sm" variant="outline" className="h-8 text-xs bg-white border-amber-200 text-amber-700 hover:bg-amber-50">
+                <RefreshCw className="w-3 h-3 ml-1" /> إعادة تعيين كلمة المرور
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Users Table ── */}
       {loading ? (
         <div className="flex flex-col items-center py-20 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
@@ -1629,17 +1858,31 @@ function UsersView() {
           <table className="w-full text-right border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-gray-100 text-xs font-bold text-gray-500">
-                <th className="p-3">الاسم</th>
+                <th className="p-3 w-10 text-center">
+                  <input type="checkbox" className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                    checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+                <th className="p-3">الاسم و البريد</th>
                 <th className="p-3">اسم المستخدم</th>
                 <th className="p-3">الصلاحية</th>
                 <th className="p-3">الجهة</th>
                 <th className="p-3 text-center">الحالة</th>
+                <th className="p-3 text-center">كلمة المرور</th>
+                <th className="p-3">آخر تسجيل دخول</th>
                 <th className="p-3 text-center">الإجراءات</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-gray-100">
-              {users.map(u => (
-                <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
+              {filteredUsers.map(u => (
+                <tr key={u.id} className={`hover:bg-slate-50/80 transition-colors ${selectedUsers.has(u.id) ? 'bg-emerald-50/30' : ''}`}>
+                  <td className="p-3 text-center">
+                    <input type="checkbox" className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                      checked={selectedUsers.has(u.id)}
+                      onChange={() => toggleSelectUser(u.id)}
+                    />
+                  </td>
                   <td className="p-3">
                     <p className="font-bold text-gray-800">{u.full_name}</p>
                     <p className="text-[10px] text-gray-400 font-mono mt-0.5">{u.email}</p>
@@ -1652,7 +1895,7 @@ function UsersView() {
                   </td>
                   <td className="p-3">
                     {u.health_units?.name ? (
-                      <p className="leading-tight">{u.health_units.name} <span className="text-[10px] text-gray-400">({u.departments?.name})</span></p>
+                      <p className="leading-tight">{u.health_units.name} <br/><span className="text-[10px] text-gray-400">{u.departments?.name}</span></p>
                     ) : u.departments?.name ? (
                       <span>{u.departments.name}</span>
                     ) : (
@@ -1664,25 +1907,36 @@ function UsersView() {
                       {u.active ? "نشط" : "معطل"}
                     </Badge>
                   </td>
+                  <td className="p-3 text-center">
+                    <Badge className={u.must_change_password ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-gray-50 text-gray-600 border-gray-200"}>
+                      {u.must_change_password ? "مؤقتة" : "تم التغيير"}
+                    </Badge>
+                  </td>
+                  <td className="p-3 text-gray-500 font-mono text-[10px]">
+                    {u.last_login ? new Date(u.last_login).toLocaleString("ar-EG", { dateStyle: 'short', timeStyle: 'short' }) : "لم يسجل دخول"}
+                  </td>
                   <td className="p-3">
                     <div className="flex items-center justify-center gap-1 flex-wrap">
-                      <Button onClick={() => openEditModal(u)} variant="outline" className="text-[10px] px-2 h-7 gap-1 border-blue-200 text-blue-600 hover:bg-blue-50">
-                        <Edit2 className="w-3 h-3" /> تعديل
+                      <Button onClick={() => loadActivityLog(u)} variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50 rounded-full" title="سجل النشاط">
+                        <FileText className="w-3.5 h-3.5" />
                       </Button>
-                      <Button onClick={() => toggleUserActive(u.id, u.active)} variant="outline"
-                        className={`text-[10px] px-2 h-7 gap-1 ${u.active ? "border-red-200 text-red-600 hover:bg-red-50" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"}`}>
-                        {u.active ? <><UserX className="w-3 h-3" /> تعطيل</> : <><UserCheck className="w-3 h-3" /> تفعيل</>}
+                      <Button onClick={() => openEditModal(u)} variant="ghost" className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50 rounded-full" title="تعديل">
+                        <Edit2 className="w-3.5 h-3.5" />
                       </Button>
-                      <Button onClick={() => handleResetPassword(u.id, u.full_name)} variant="outline" className="text-[10px] px-2 h-7 gap-1 border-amber-200 text-amber-600 hover:bg-amber-50">
-                        <RefreshCw className="w-3 h-3" /> كلمة مرور
-                      </Button>
-                      <Button onClick={() => setDeletingUser(u)} variant="outline" className="text-[10px] px-2 h-7 gap-1 border-red-300 text-red-700 hover:bg-red-50">
-                        <XCircle className="w-3 h-3" /> حذف
+                      <Button onClick={() => setDeletingUser(u)} variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50 rounded-full" title="حذف">
+                        <XCircle className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="text-center py-10 text-gray-400">
+                    لا يوجد مستخدمين يطابقون شروط البحث
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
           </div>
@@ -1854,10 +2108,88 @@ function UsersView() {
           </Card>
         </div>
       )}
+
+      {/* ── Activity Log Modal ── */}
+      {activityUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-lg border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <CardHeader className="bg-slate-800 text-white flex flex-row items-center justify-between p-4">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-slate-300" /> 
+                سجل نشاط المستخدم: {activityUser.full_name}
+              </CardTitle>
+              <button onClick={() => setActivityUser(null)} className="p-1 rounded-full hover:bg-white/10 text-white"><X className="w-4 h-4" /></button>
+            </CardHeader>
+            <CardContent className="p-5 max-h-[75vh] overflow-y-auto space-y-5">
+              {activityLoading ? (
+                <div className="flex flex-col items-center py-10 gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                  <p className="text-xs text-gray-500">جاري تحميل السجل...</p>
+                </div>
+              ) : activityData ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] text-gray-500 font-bold mb-1">تاريخ إنشاء الحساب</p>
+                      <p className="text-xs font-mono text-gray-800">{new Date(activityData.accountCreationDate).toLocaleString("ar-EG")}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] text-gray-500 font-bold mb-1">آخر تسجيل دخول</p>
+                      <p className="text-xs font-mono text-gray-800">{activityData.lastLogin ? new Date(activityData.lastLogin).toLocaleString("ar-EG") : "—"}</p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] text-gray-500 font-bold mb-1">آخر تعديل للملف الشخصي</p>
+                      <p className="text-xs font-mono text-gray-800">{new Date(activityData.lastProfileUpdate).toLocaleString("ar-EG")}</p>
+                    </div>
+                    <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+                      <p className="text-[10px] text-emerald-600 font-bold mb-1">آخر زيارة مسجلة (للمرضى)</p>
+                      {activityData.lastRecordedVisit ? (
+                        <>
+                          <p className="text-xs font-mono text-emerald-900">{new Date(activityData.lastRecordedVisit.created_at).toLocaleString("ar-EG")}</p>
+                          <p className="text-[10px] text-emerald-700 truncate mt-0.5" title={activityData.lastRecordedVisit.patients?.full_name}>
+                            المريض: {activityData.lastRecordedVisit.patients?.full_name}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-emerald-800">لا يوجد زيارات مسجلة بواسطة هذا المستخدم</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-700 mb-3 border-b pb-2">سجل الإجراءات والتعديلات</h4>
+                    {activityData.modificationHistory.length > 0 ? (
+                      <div className="space-y-2">
+                        {activityData.modificationHistory.map((log: any) => (
+                          <div key={log.id} className="flex gap-3 p-3 bg-white border border-gray-100 rounded-xl shadow-sm text-xs">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                              <Info className="w-4 h-4 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-800">
+                                {log.action_type === "delete_user" ? "حذف مستخدم" : log.action_type}
+                              </p>
+                              <p className="text-gray-500 text-[10px] mt-0.5">بواسطة: {log.performed_by_user?.full_name || "النظام"}</p>
+                              <p className="text-gray-400 font-mono text-[10px] mt-0.5">{new Date(log.created_at).toLocaleString("ar-EG")}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-gray-400 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
+                        <p className="text-xs">لا توجد تعديلات مسجلة في السجل</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
-
 
 
 // ═══════════════════════════════════════════════════════════════════════════════

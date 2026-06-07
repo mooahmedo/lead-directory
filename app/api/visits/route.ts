@@ -101,6 +101,23 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll() {},
+        },
+      }
+    );
+
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "غير مصرح — يجب تسجيل الدخول" }, { status: 401 });
+    }
+
     const body: VisitSubmission = await request.json();
 
     const {
@@ -222,6 +239,7 @@ export async function POST(request: NextRequest) {
         egfr: egfr || null,
         referred: referred ?? false,
         referral_dest: referred ? (referralDest || null) : null,
+        created_by: user.id,
       })
       .select('id')
       .single();

@@ -55,6 +55,8 @@ export async function GET(request: NextRequest) {
         department_id,
         unit_id,
         active,
+        last_login,
+        must_change_password,
         created_at,
         departments(name),
         health_units(name)
@@ -134,6 +136,8 @@ export async function POST(request: NextRequest) {
         department_id,
         unit_id,
         active,
+        last_login,
+        must_change_password,
         created_at,
         departments(name),
         health_units(name)
@@ -187,6 +191,10 @@ export async function PUT(request: NextRequest) {
     if (Object.keys(updateData).length > 0) {
       const { error: authError } = await adminClient.auth.admin.updateUserById(id, updateData);
       if (authError) {
+        // If the user doesn't exist in Auth, we can't update credentials. Return specific error.
+        if (authError.message === "User not found" || authError.status === 404) {
+          return NextResponse.json({ error: "حساب المستخدم معطوب (مفقود من نظام التوثيق). يرجى حذفه نهائياً." }, { status: 404 });
+        }
         return NextResponse.json({ error: authError.message }, { status: 500 });
       }
     }
@@ -262,7 +270,10 @@ export async function DELETE(request: NextRequest) {
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
 
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      // If the user is already missing from Auth, we ignore the error and proceed to delete from public.users
+      if (deleteError.message !== "User not found" && deleteError.status !== 404) {
+        return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      }
     }
 
     // Direct delete from public.users as backup (if ON DELETE CASCADE is missing)
