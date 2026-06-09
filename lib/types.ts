@@ -112,8 +112,6 @@ export interface DashboardStats {
   totalPatients: number;
   totalVisits: number;
   todayVisits: number;
-  realTotalVisits?: number;
-  realTodayVisits?: number;
   activeUnits: number;
   newPatients: number;
   returningPatients: number;

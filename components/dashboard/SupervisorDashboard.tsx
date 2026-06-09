@@ -314,17 +314,17 @@ export function SupervisorDashboard({ onLogout, profile }: { onLogout: () => voi
 
   // ─── Real Monitoring Engine ────────────────────────────────────────────────
   // Determine if sufficient operational data exists to generate meaningful alerts.
-  // 1. System must have operated at least once (realTotalVisits > 0).
-  // 2. System must have real activity today (realTodayVisits > 0). If 0, it might be a holiday/weekend.
-  const hasEverOperated = stats ? ((stats.realTotalVisits ?? stats.totalVisits) > 0) : false;
-  const hasRealActivityToday = stats ? ((stats.realTodayVisits ?? stats.todayVisits) > 0) : false;
+  // 1. System must have operated at least once (totalVisits > 0).
+  // 2. System must have activity today (todayVisits > 0). If 0, it might be a holiday/weekend.
+  const hasEverOperated = stats ? (stats.totalVisits > 0) : false;
+  const hasActivityToday = stats ? (stats.todayVisits > 0) : false;
 
   // Working hours threshold: alerts only fire after 11:00 AM local time.
   const currentHour = new Date().getHours();
   const workingHoursStarted = currentHour >= 11;
 
   // Top Performers: only meaningful if there are actual real visits today.
-  const topUnits = hasRealActivityToday
+  const topUnits = hasActivityToday
     ? [...units]
         .filter((u) => u.active && u.daily_target > 0 && u.today_visits > 0)
         .sort((a, b) => b.today_visits / b.daily_target - a.today_visits / a.daily_target)
@@ -333,9 +333,9 @@ export function SupervisorDashboard({ onLogout, profile }: { onLogout: () => voi
 
   // Units Requiring Attention — real criteria:
   // 1. System has launched (hasEverOperated)
-  // 2. System is currently active today (hasRealActivityToday)
+  // 2. System is currently active today (hasActivityToday)
   // 3. Working hours have started (>= 11:00 AM)
-  const needAttentionUnits = (hasEverOperated && hasRealActivityToday && workingHoursStarted)
+  const needAttentionUnits = (hasEverOperated && hasActivityToday && workingHoursStarted)
     ? units
         .filter((u) => {
           if (!u.active || u.daily_target <= 0) return false;
@@ -613,7 +613,7 @@ export function SupervisorDashboard({ onLogout, profile }: { onLogout: () => voi
                     <p className="text-[10px] text-gray-400 mt-0.5">
                       {!hasEverOperated
                         ? "تظهر النتائج بعد بدء تسجيل الزيارات"
-                        : !hasRealActivityToday
+                        : !hasActivityToday
                         ? "بانتظار بدء تسجيل الزيارات لليوم"
                         : !workingHoursStarted
                         ? "المتابعة تبدأ بعد الساعة 11:00 صباحاً"
@@ -629,7 +629,7 @@ export function SupervisorDashboard({ onLogout, profile }: { onLogout: () => voi
                     title="لا توجد بيانات تشغيلية بعد"
                     message="ستظهر نتائج المتابعة بعد بدء الوحدات في تسجيل الزيارات"
                   />
-                ) : !hasRealActivityToday ? (
+                ) : !hasActivityToday ? (
                   <EmptyState
                     icon={<Activity className="w-5 h-5 text-slate-400" />}
                     title="لم تُسجل أي زيارات اليوم"

@@ -29,6 +29,10 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetting, setResetting] = useState(false);
 
+  // Simulation state
+  const [simulating, setSimulating] = useState(false);
+  const [simCounts, setSimCounts] = useState<{ patientsCreated: number; visitsCreated: number; screeningsCreated: number; followUpsCreated: number } | null>(null);
+
   const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
@@ -381,16 +385,40 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
             <RefreshCw className="w-5 h-5" /> وضع المحاكاة والتجربة (Simulation Mode)
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-6 space-y-4">
+          {/* Generation counts feedback */}
+          {simCounts && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+              <p className="text-[11px] font-bold text-indigo-800 mb-3 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" /> تم توليد البيانات بنجاح — ارجع للوحة التحكم لرؤية النتائج
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                {[
+                  { label: "المرضى", value: simCounts.patientsCreated, color: "text-blue-700" },
+                  { label: "الزيارات", value: simCounts.visitsCreated, color: "text-emerald-700" },
+                  { label: "الفحوصات", value: simCounts.screeningsCreated, color: "text-purple-700" },
+                  { label: "المتابعات", value: simCounts.followUpsCreated, color: "text-amber-700" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="bg-white rounded-lg p-3 border border-indigo-100">
+                    <p className={`text-lg font-black ${color}`}>{value}</p>
+                    <p className="text-[10px] text-gray-500 font-medium">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="border border-gray-200 rounded-xl p-5 hover:border-indigo-300 transition-colors bg-white shadow-sm">
               <h3 className="font-bold text-gray-800 text-sm">توليد بيانات تجريبية (Demo Data)</h3>
               <p className="text-xs text-gray-500 mt-2 mb-4 leading-relaxed">
-                توليد 50 سجل مرضى وزيارات عشوائية لأغراض التجربة واختبار النظام. يتم تمييز هذه السجلات بكلمة [SIMULATION] في اسم المريض لسهولة التعرف عليها.
+                توليد 50 سجل مرضى وزيارات عشوائية لأغراض التجربة واختبار النظام. يتم تمييز هذه السجلات بكلمة [SIMULATION] في اسم المريض لسهولة التعرف عليها. تُسجَّل الزيارات لليوم الحالي لتظهر في لوحة التحكم.
               </p>
               <Button
                 onClick={async () => {
-                  const toastId = toast.loading("جاري توليد البيانات التجريبية...");
+                  setSimulating(true);
+                  setSimCounts(null);
+                  const toastId = toast.loading("جاري توليد البيانات التجريبية (المرحلة 1: مرضى، المرحلة 2: زيارات)...");
                   try {
                     const res = await fetch("/api/system/simulate", {
                       method: "POST",
@@ -398,17 +426,31 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
                       body: JSON.stringify({ action: "generate", count: 50 }),
                     });
                     const data = await res.json();
-                    if (!res.ok) throw new Error(data.error);
-                    toast.success(data.message, { id: toastId });
+                    if (!res.ok) {
+                      // Show full diagnostic error from backend
+                      toast.error(
+                        data.error + (data.hint ? `\nتلميح: ${data.hint}` : ""),
+                        { id: toastId, duration: 10000 }
+                      );
+                      return;
+                    }
+                    setSimCounts(data.counts);
+                    toast.success(
+                      `✅ تم توليد ${data.counts.patientsCreated} مريض و${data.counts.visitsCreated} زيارة — راجع لوحة التحكم`,
+                      { id: toastId, duration: 6000 }
+                    );
                   } catch (err: any) {
-                    toast.error(err.message || "حدث خطأ", { id: toastId });
+                    toast.error(err.message || "خطأ غير متوقع", { id: toastId, duration: 8000 });
+                  } finally {
+                    setSimulating(false);
                   }
                 }}
-                disabled={generating || restoring || resetting || profile.role !== "supervisor"}
+                disabled={simulating || generating || restoring || resetting || profile.role !== "supervisor"}
                 variant="outline"
                 className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800 h-9 text-xs font-bold"
               >
-                توليد 50 سجل عشوائي
+                {simulating ? <Loader2 className="w-3.5 h-3.5 animate-spin ml-1.5" /> : null}
+                {simulating ? "جاري التوليد..." : "توليد 50 سجل عشوائي"}
               </Button>
             </div>
 
@@ -419,6 +461,8 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
               </p>
               <Button
                 onClick={async () => {
+                  setSimulating(true);
+                  setSimCounts(null);
                   const toastId = toast.loading("جاري تنظيف بيانات المحاكاة...");
                   try {
                     const res = await fetch("/api/system/simulate", {
@@ -431,11 +475,14 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
                     toast.success(data.message, { id: toastId });
                   } catch (err: any) {
                     toast.error(err.message || "حدث خطأ", { id: toastId });
+                  } finally {
+                    setSimulating(false);
                   }
                 }}
-                disabled={generating || restoring || resetting || profile.role !== "supervisor"}
+                disabled={simulating || generating || restoring || resetting || profile.role !== "supervisor"}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white h-9 text-xs font-bold"
               >
+                {simulating ? <Loader2 className="w-3.5 h-3.5 animate-spin ml-1.5" /> : null}
                 حذف البيانات التجريبية
               </Button>
             </div>

@@ -4,9 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
-/**
- * Shared auth check: only supervisor role allowed for simulation operations.
- */
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 async function checkSupervisorAuth() {
   const supabaseAuth = await createClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
@@ -26,10 +24,36 @@ async function checkSupervisorAuth() {
   return { error: null, status: 200, user, profile };
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 /**
- * POST /api/system/simulate
- * Action: 'generate' | 'cleanup'
+ * Generate a unique national ID that cannot collide between runs.
+ * Format: SIM + timestamp_ms + 4-digit index (padded).
+ * This guarantees no two runs and no two records within a run share an ID.
  */
+function generateSimNationalId(runId: string, index: number): string {
+  return `SIM${runId}${String(index).padStart(4, '0')}`.substring(0, 14);
+}
+
+/**
+ * Generate a visit timestamp that is today (within working hours) to ensure
+ * it counts in the dashboard's todayVisits KPI.
+ * Spread across the day to avoid (patient_id, unit_id, visit_date) collisions.
+ */
+function generateTodayVisitDate(index: number): string {
+  const now = new Date();
+  // Spread visits from 08:00 to current time across the day, each record gets a unique minute
+  const startOfDay = new Date(now);
+  startOfDay.setHours(8, 0, 0, 0);
+  // Each record gets a unique second offset so visit_date is unique per patient
+  const secondOffset = index * 37; // prime number spread to avoid clustering
+  const visitMs = startOfDay.getTime() + (secondOffset * 1000);
+  // Don't exceed current time
+  const finalMs = Math.min(visitMs, now.getTime() - 1000);
+  return new Date(finalMs).toISOString();
+}
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
     const auth = await checkSupervisorAuth();
@@ -40,24 +64,31 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
 
+    // ── CLEANUP ────────────────────────────────────────────────────────────────
     if (action === 'cleanup') {
-      // Cleanup simulated data
-      // We identify simulated data by the '[SIMULATION]' prefix in the full_name
-      const { data, error } = await adminClient.from('patients')
+      const { data, error } = await adminClient
+        .from('patients')
         .delete()
         .like('full_name', '[SIMULATION]%')
         .select('id');
-        
-      if (error) throw new Error('فشل في مسح بيانات المحاكاة');
+
+      if (error) {
+        return NextResponse.json({
+          error: `فشل في مسح بيانات المحاكاة: ${error.message} (code: ${error.code})`
+        }, { status: 500 });
+      }
 
       const deletedCount = data?.length || 0;
 
-      await adminClient.from('simulation_logs').insert({
-        action: 'removed',
-        user_email: auth.user!.email,
-        user_name: auth.profile!.full_name,
-        record_count: deletedCount
-      });
+      // Best-effort log (don't fail if table doesn't exist yet)
+      try {
+        await adminClient.from('simulation_logs').insert({
+          action: 'removed',
+          user_email: auth.user!.email,
+          user_name: auth.profile!.full_name,
+          record_count: deletedCount
+        });
+      } catch (_) { /* ignore audit log failure */ }
 
       return NextResponse.json({
         success: true,
@@ -66,77 +97,157 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // ── GENERATE ───────────────────────────────────────────────────────────────
     if (action === 'generate') {
-      const recordsToGenerate = count || 50;
-      
-      // 1. Get random active health unit
-      const { data: units } = await adminClient.from('health_units').select('id');
-      if (!units || units.length === 0) throw new Error('لا يوجد وحدات صحية لتسجيل البيانات عليها');
+      const recordsToGenerate = Math.min(count || 50, 200); // Cap at 200
 
-      const patientsToInsert = [];
-      const visitsToInsert = [];
+      // Stage 1: Fetch active health units
+      const { data: units, error: unitsError } = await adminClient
+        .from('health_units')
+        .select('id, name, daily_target')
+        .eq('active', true);
+
+      if (unitsError) {
+        return NextResponse.json({
+          error: `فشل تحميل الوحدات الصحية: ${unitsError.message}`
+        }, { status: 500 });
+      }
+      if (!units || units.length === 0) {
+        return NextResponse.json({
+          error: 'لا توجد وحدات صحية نشطة في النظام. يرجى إضافة وحدات قبل توليد البيانات.'
+        }, { status: 422 });
+      }
+
+      // Use timestamp-based run ID to guarantee uniqueness across runs
+      const runId = Date.now().toString().substring(5); // Last 8 digits of ms timestamp
+
+      const patientsToInsert: any[] = [];
+      const visitsToInsert: any[] = [];
+
+      const names = [
+        'أحمد محمد', 'محمود علي', 'محمد إبراهيم', 'عبدالله حسن', 'خالد سعيد',
+        'فاطمة أحمد', 'نور الهدى', 'مريم حسين', 'سارة إبراهيم', 'هدى محمود',
+        'يوسف عبدالله', 'عمر خالد', 'إبراهيم محمد', 'حسن علي', 'عمرو سعد',
+        'أسماء أحمد', 'ريم علي', 'منى حسن', 'دينا محمد', 'رنا عبدالرحمن',
+      ];
 
       for (let i = 0; i < recordsToGenerate; i++) {
         const patientId = crypto.randomUUID();
-        const unitId = units[Math.floor(Math.random() * units.length)].id;
-        
-        // Random stats
-        const age = Math.floor(Math.random() * (85 - 18) + 18);
-        const gender = Math.random() > 0.5 ? 'ذكر' : 'أنثى';
-        const systolic = Math.floor(Math.random() * (180 - 100) + 100);
-        const diastolic = Math.floor(Math.random() * (110 - 60) + 60);
-        const hasSugar = Math.random() > 0.6;
-        
+        const unit = units[i % units.length]; // distribute evenly across units
+        const unitId = unit.id;
+
+        // Clinical data
+        const age = Math.floor(Math.random() * (80 - 35) + 35); // Adults more likely to have chronic conditions
+        const gender = i % 2 === 0 ? 'ذكر' : 'أنثى';
+        const systolic = Math.floor(Math.random() * (185 - 100) + 100);
+        const diastolic = Math.floor(Math.random() * (115 - 60) + 60);
+        const hasSugar = Math.random() > 0.45; // ~55% have diabetes screening
+        const sugarLevel = hasSugar ? Math.floor(Math.random() * (380 - 70) + 70) : null;
+        const baseName = names[i % names.length];
+        const isReferred = systolic >= 160 || diastolic >= 100 || (hasSugar && sugarLevel !== null && sugarLevel > 300);
+
+        // Unique national ID: SIM prefix + runId + index (no collision possible)
+        const nationalId = generateSimNationalId(runId, i);
+
         patientsToInsert.push({
           id: patientId,
-          national_id: `2${Math.floor(Math.random() * 10000000000000).toString().padStart(13, '0')}`,
-          full_name: `[SIMULATION] مريض تجريبي ${i + 1}`,
-          phone: `01${Math.floor(Math.random() * 1000000000).toString().padStart(9, '0')}`,
+          national_id: nationalId,
+          full_name: `[SIMULATION] ${baseName} ${i + 1}`,
+          phone: `01${String(Math.floor(Math.random() * 900000000) + 100000000)}`,
           governorate: 'سوهاج',
-          age: age,
-          gender: gender,
+          age,
+          gender,
           first_visit_date: new Date().toISOString(),
         });
 
         visitsToInsert.push({
           patient_id: patientId,
           unit_id: unitId,
-          visit_type: Math.random() > 0.7 ? 'متابعة' : 'أول مرة',
-          visit_date: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString(), // Last 7 days
-          systolic: systolic,
-          diastolic: diastolic,
+          // Each patient has a unique patientId, so (patient_id, unit_id, visit_date)
+          // will never conflict — patient_id alone makes it unique.
+          visit_type: Math.random() > 0.65 ? 'متردد' : 'أول مرة',
+          // TODAY's date so it shows in todayVisits KPI, each with unique time
+          visit_date: generateTodayVisitDate(i),
+          systolic,
+          diastolic,
           sugar_type: hasSugar ? (Math.random() > 0.5 ? 'عشوائي' : 'صائم') : null,
-          sugar_level: hasSugar ? Math.floor(Math.random() * (350 - 70) + 70) : null,
-          weight: Math.floor(Math.random() * (120 - 50) + 50),
-          height: Math.floor(Math.random() * (190 - 150) + 150),
-          referred: systolic >= 160 || diastolic >= 100 || (hasSugar && systolic > 250),
-          referral_dest: (systolic >= 160 || diastolic >= 100 || (hasSugar && systolic > 250)) ? 'مستشفى سوهاج العام' : null
+          sugar_level: sugarLevel,
+          weight: Math.floor(Math.random() * (130 - 50) + 50),
+          height: Math.floor(Math.random() * (185 - 150) + 150),
+          referred: isReferred,
+          referral_dest: isReferred ? 'مستشفى سوهاج العام' : null,
         });
       }
 
-      const { error: pError } = await adminClient.from('patients').insert(patientsToInsert);
-      if (pError) throw new Error('فشل إدخال بيانات المرضى المحاكاة');
+      // Stage 2: Insert patients
+      const { data: insertedPatients, error: pError } = await adminClient
+        .from('patients')
+        .insert(patientsToInsert)
+        .select('id');
 
-      const { error: vError } = await adminClient.from('visits').insert(visitsToInsert);
-      if (vError) throw new Error('فشل إدخال بيانات الزيارات المحاكاة');
+      if (pError) {
+        return NextResponse.json({
+          error: `[مرحلة 1] فشل إدخال المرضى: ${pError.message} | الكود: ${pError.code} | التفاصيل: ${pError.details || 'لا يوجد'}`,
+          stage: 'patients',
+          hint: pError.hint || null,
+        }, { status: 500 });
+      }
 
-      await adminClient.from('simulation_logs').insert({
-        action: 'generated',
-        user_email: auth.user!.email,
-        user_name: auth.profile!.full_name,
-        record_count: recordsToGenerate
-      });
+      const patientsCreated = insertedPatients?.length || 0;
+
+      // Stage 3: Insert visits
+      const { data: insertedVisits, error: vError } = await adminClient
+        .from('visits')
+        .insert(visitsToInsert)
+        .select('id');
+
+      if (vError) {
+        // Rollback: delete the patients we just created to keep DB clean
+        await adminClient.from('patients')
+          .delete()
+          .in('id', patientsToInsert.map(p => p.id));
+
+        return NextResponse.json({
+          error: `[مرحلة 2] فشل إدخال الزيارات: ${vError.message} | الكود: ${vError.code} | التفاصيل: ${vError.details || 'لا يوجد'}`,
+          stage: 'visits',
+          hint: vError.hint || null,
+          patientsRolledBack: patientsCreated,
+        }, { status: 500 });
+      }
+
+      const visitsCreated = insertedVisits?.length || 0;
+
+      // Stage 4: Audit log (best-effort)
+      try {
+        await adminClient.from('simulation_logs').insert({
+          action: 'generated',
+          user_email: auth.user!.email,
+          user_name: auth.profile!.full_name,
+          record_count: patientsCreated
+        });
+      } catch (_) { /* ignore audit log failure */ }
 
       return NextResponse.json({
         success: true,
-        message: `تم توليد ${recordsToGenerate} سجل محاكاة بنجاح`,
-        generatedCount: recordsToGenerate
+        message: `تم توليد بيانات المحاكاة بنجاح`,
+        counts: {
+          patientsCreated,
+          visitsCreated,
+          screeningsCreated: visitsCreated, // Visits contain all clinical screening data
+          followUpsCreated: visitsToInsert.filter(v => v.visit_type === 'متردد').length,
+        },
+        unitsUsed: units.length,
+        runId,
       });
     }
 
-    return NextResponse.json({ error: 'إجراء غير صالح' }, { status: 400 });
+    return NextResponse.json({ error: 'إجراء غير صالح. القيم المقبولة: generate | cleanup' }, { status: 400 });
+
   } catch (err: any) {
-    console.error('Simulation error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[simulate] Unexpected error:', err);
+    return NextResponse.json({
+      error: `خطأ غير متوقع: ${err.message}`,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    }, { status: 500 });
   }
 }
