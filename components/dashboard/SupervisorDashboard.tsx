@@ -312,15 +312,43 @@ export function SupervisorDashboard({ onLogout, profile }: { onLogout: () => voi
     return acc;
   }, {});
 
-  // Insights
-  const topUnits = [...units]
-    .filter((u) => u.active && u.daily_target > 0)
-    .sort((a, b) => b.today_visits / b.daily_target - a.today_visits / a.daily_target)
-    .slice(0, 3);
+  // ─── Real Monitoring Engine ────────────────────────────────────────────────
+  // Determine if sufficient operational data exists to generate meaningful alerts.
+  // "Sufficient" means: the system as a whole has recorded at least 1 visit today.
+  const hasOperationalData = stats ? (stats.todayVisits > 0) : false;
 
-  const needAttentionUnits = units
-    .filter((u) => u.active && u.daily_target > 0 && u.today_visits / u.daily_target < 0.4)
-    .slice(0, 4);
+  // Working hours threshold: alerts only fire after 11:00 AM local time.
+  // Before 11:00 AM, zero visits is expected and should NOT generate warnings.
+  const currentHour = new Date().getHours();
+  const workingHoursStarted = currentHour >= 11;
+
+  // Top Performers: only meaningful if there are actual visits today.
+  const topUnits = hasOperationalData
+    ? [...units]
+        .filter((u) => u.active && u.daily_target > 0 && u.today_visits > 0)
+        .sort((a, b) => b.today_visits / b.daily_target - a.today_visits / a.daily_target)
+        .slice(0, 3)
+    : [];
+
+  // Units Requiring Attention — real criteria:
+  // 1. Working hours have started (>= 11:00 AM)
+  // 2. System has real operational data (todayVisits > 0)
+  // 3. Unit is active and has a daily target
+  // 4. Either: no visits recorded at all (today_visits === 0)
+  //        Or: performance is critically low (< 20% of target) relative to the active system
+  const needAttentionUnits = (hasOperationalData && workingHoursStarted)
+    ? units
+        .filter((u) => {
+          if (!u.active || u.daily_target <= 0) return false;
+          const pct = u.today_visits / u.daily_target;
+          // Flag units with zero visits during working hours
+          if (u.today_visits === 0) return true;
+          // Flag units critically below threshold (< 20%), only if system is generally active
+          if (pct < 0.2) return true;
+          return false;
+        })
+        .slice(0, 6)
+    : [];
 
   return (
     <div id="dashboard-export-area" className="space-y-5" dir="rtl">
@@ -583,31 +611,55 @@ export function SupervisorDashboard({ onLogout, profile }: { onLogout: () => voi
                   </div>
                   <div>
                     <CardTitle className="text-xs font-bold text-gray-700">وحدات تحتاج متابعة</CardTitle>
-                    <p className="text-[10px] text-gray-400 mt-0.5">نشطة لكن أداؤها دون 40% من الهدف اليومي</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {!hasOperationalData
+                        ? "تظهر النتائج بعد بدء تسجيل الزيارات"
+                        : !workingHoursStarted
+                        ? "المتابعة تبدأ بعد الساعة 11:00 صباحاً"
+                        : "وحدات نشطة دون زيارات أو دون 20% من الهدف اليومي"}
+                    </p>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                {needAttentionUnits.length > 0 ? (
+                {!hasOperationalData ? (
+                  <EmptyState
+                    icon={<Activity className="w-5 h-5" />}
+                    title="لا توجد بيانات تشغيلية بعد"
+                    message="ستظهر نتائج المتابعة بعد بدء الوحدات في تسجيل الزيارات"
+                  />
+                ) : !workingHoursStarted ? (
+                  <EmptyState
+                    icon={<Clock className="w-5 h-5" />}
+                    title="لم تبدأ ساعات العمل بعد"
+                    message="تُفعَّل تنبيهات الأداء بعد الساعة 11:00 صباحاً"
+                  />
+                ) : needAttentionUnits.length > 0 ? (
                   <div className="space-y-2">
                     {needAttentionUnits.map((u) => {
                       const pct = u.daily_target > 0
                         ? Math.min(100, Math.round((u.today_visits / u.daily_target) * 100))
                         : 0;
+                      const isZeroVisits = u.today_visits === 0;
                       return (
-                        <div key={u.id} className="flex items-center gap-3 p-2.5 bg-amber-50/60 rounded-xl border border-amber-100">
-                          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                        <div key={u.id} className={`flex items-center gap-3 p-2.5 rounded-xl border ${
+                          isZeroVisits
+                            ? "bg-red-50/60 border-red-100"
+                            : "bg-amber-50/60 border-amber-100"
+                        }`}>
+                          <AlertCircle className={`w-4 h-4 shrink-0 ${
+                            isZeroVisits ? "text-red-500" : "text-amber-500"
+                          }`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-bold text-gray-800 truncate">{u.name}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <div className="flex-1 h-1.5 bg-amber-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
-                              </div>
-                              <span className="text-[10px] font-black text-amber-700 shrink-0">{pct}%</span>
-                            </div>
+                            <p className="text-[9px] mt-0.5 font-medium text-gray-500">
+                              {isZeroVisits ? "لم تُسجَّل أي زيارة اليوم" : `أداء منخفض جداً: ${pct}%`}
+                            </p>
                           </div>
                           <div className="text-left shrink-0">
-                            <p className="text-sm font-black text-amber-700 leading-none">{u.today_visits}</p>
+                            <p className={`text-sm font-black leading-none ${
+                              isZeroVisits ? "text-red-600" : "text-amber-700"
+                            }`}>{u.today_visits}</p>
                             <p className="text-[9px] text-gray-400 mt-0.5">/{u.daily_target}</p>
                           </div>
                         </div>
@@ -665,30 +717,43 @@ export function SupervisorDashboard({ onLogout, profile }: { onLogout: () => voi
                 </div>
               </CardHeader>
               <CardContent className="px-4 pb-4 space-y-2">
-                {stats.inactiveUnits > 0 && (
-                  <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                    <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-red-800">{stats.inactiveUnits} وحدة صحية موقوفة</p>
-                      <p className="text-[10px] text-red-600 mt-0.5">راجع صفحة الوحدات الصحية لإعادة التفعيل</p>
-                    </div>
-                  </div>
-                )}
-                {needAttentionUnits.length > 0 && (
-                  <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-[11px] font-bold text-amber-800">{needAttentionUnits.length} وحدة تحتاج متابعة اليوم</p>
-                      <p className="text-[10px] text-amber-600 mt-0.5">هذه الوحدات لم تحقق 40% من هدفها اليومي</p>
-                    </div>
-                  </div>
-                )}
-                {stats.inactiveUnits === 0 && needAttentionUnits.length === 0 && (
+                {!hasOperationalData ? (
                   <EmptyState
                     icon={<Bell className="w-5 h-5" />}
-                    title="لا توجد تنبيهات نشطة"
-                    message="النظام يعمل بشكل طبيعي"
+                    title="لا توجد بيانات تشغيلية بعد"
+                    message="ستظهر التنبيهات بعد بدء الوحدات في تسجيل الزيارات"
                   />
+                ) : (
+                  <>
+                    {stats.inactiveUnits > 0 && (
+                      <div className="flex items-start gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                        <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-[11px] font-bold text-red-800">{stats.inactiveUnits} وحدة صحية موقوفة</p>
+                          <p className="text-[10px] text-red-600 mt-0.5">راجع صفحة الوحدات الصحية لإعادة التفعيل</p>
+                        </div>
+                      </div>
+                    )}
+                    {workingHoursStarted && needAttentionUnits.length > 0 && (
+                      <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-[11px] font-bold text-amber-800">{needAttentionUnits.length} وحدة تحتاج متابعة اليوم</p>
+                          <p className="text-[10px] text-amber-600 mt-0.5">
+                            {needAttentionUnits.filter(u => u.today_visits === 0).length} بدون زيارات،{" "}
+                            {needAttentionUnits.filter(u => u.today_visits > 0).length} بأداء منخفض
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {stats.inactiveUnits === 0 && needAttentionUnits.length === 0 && (
+                      <EmptyState
+                        icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
+                        title="لا توجد تنبيهات نشطة"
+                        message="جميع الوحدات النشطة تؤدي عملها بشكل طبيعي"
+                      />
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
