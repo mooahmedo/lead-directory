@@ -374,6 +374,75 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
         </CardContent>
       </Card>
 
+      {/* Simulation Mode */}
+      <Card className="border-indigo-200 shadow-md bg-white overflow-hidden mt-8">
+        <CardHeader className="bg-indigo-50/50 border-b border-indigo-100">
+          <CardTitle className="text-indigo-700 flex items-center gap-2 text-sm font-bold">
+            <RefreshCw className="w-5 h-5" /> وضع المحاكاة والتجربة (Simulation Mode)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="border border-gray-200 rounded-xl p-5 hover:border-indigo-300 transition-colors bg-white shadow-sm">
+              <h3 className="font-bold text-gray-800 text-sm">توليد بيانات تجريبية (Demo Data)</h3>
+              <p className="text-xs text-gray-500 mt-2 mb-4 leading-relaxed">
+                توليد 50 سجل مرضى وزيارات عشوائية لأغراض التجربة واختبار النظام. يتم تمييز هذه السجلات بكلمة [SIMULATION] في اسم المريض لسهولة التعرف عليها.
+              </p>
+              <Button
+                onClick={async () => {
+                  const toastId = toast.loading("جاري توليد البيانات التجريبية...");
+                  try {
+                    const res = await fetch("/api/system/simulate", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "generate", count: 50 }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error);
+                    toast.success(data.message, { id: toastId });
+                  } catch (err: any) {
+                    toast.error(err.message || "حدث خطأ", { id: toastId });
+                  }
+                }}
+                disabled={generating || restoring || resetting || profile.role !== "supervisor"}
+                variant="outline"
+                className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800 h-9 text-xs font-bold"
+              >
+                توليد 50 سجل عشوائي
+              </Button>
+            </div>
+
+            <div className="border border-gray-200 rounded-xl p-5 hover:border-orange-300 transition-colors bg-orange-50/30 shadow-sm">
+              <h3 className="font-bold text-orange-800 text-sm">تنظيف بيانات المحاكاة</h3>
+              <p className="text-xs text-orange-600 mt-2 mb-4 leading-relaxed">
+                حذف جميع السجلات التي تم إنشاؤها عبر وضع المحاكاة (التي يبدأ اسمها بـ [SIMULATION]) دون التأثير على البيانات الحقيقية للنظام.
+              </p>
+              <Button
+                onClick={async () => {
+                  const toastId = toast.loading("جاري تنظيف بيانات المحاكاة...");
+                  try {
+                    const res = await fetch("/api/system/simulate", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "cleanup" }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error);
+                    toast.success(data.message, { id: toastId });
+                  } catch (err: any) {
+                    toast.error(err.message || "حدث خطأ", { id: toastId });
+                  }
+                }}
+                disabled={generating || restoring || resetting || profile.role !== "supervisor"}
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white h-9 text-xs font-bold"
+              >
+                حذف البيانات التجريبية
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Restore Confirmation Modal */}
       {showRestoreModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" dir="rtl">
