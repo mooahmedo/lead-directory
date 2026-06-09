@@ -6,6 +6,7 @@ import { parseNationalId, formatBirthDate } from "@/lib/national-id";
 import type { Department, HealthUnit, VisitSubmission, DashboardStats, UnitStats, UserProfile } from "@/lib/types";
 import { SupervisorDashboard } from "@/components/dashboard/SupervisorDashboard";
 import { SystemLogin, ChangePasswordView, VisitsView, PatientsView, DepartmentsUnitsView, UsersView, NurseView, InfoChip, MeasureInput } from "@/components/views/MainViews";
+import { BackupManagementView } from "@/components/views/BackupManagementView";
 
 import { Toaster, toast } from "sonner";
 import {
@@ -105,7 +106,7 @@ async function resilientFetch<T>(url: string, options?: RequestInit, retries = 2
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Page() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [view, setView] = useState<"login" | "change-password" | "dashboard" | "visits" | "patients" | "departments-units" | "users">("login");
+  const [view, setView] = useState<"login" | "change-password" | "dashboard" | "visits" | "patients" | "departments-units" | "users" | "backups">("login");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
@@ -248,6 +249,7 @@ export default function Page() {
     { id: "patients", label: "قائمة المرضى", icon: <Users className="w-5 h-5" />, roles: ["supervisor"] },
     { id: "departments-units", label: "الإدارات والوحدات", icon: <Building2 className="w-5 h-5" />, roles: ["supervisor", "coordinator"] },
     { id: "users", label: "المستخدمين", icon: <Shield className="w-5 h-5" />, roles: ["supervisor"] },
+    { id: "backups", label: "النسخ الاحتياطي", icon: <FileText className="w-5 h-5" />, roles: ["supervisor"] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => item.roles.includes(profile.role));
@@ -392,6 +394,7 @@ export default function Page() {
           {view === "patients" && <PatientsView />}
           {view === "departments-units" && <DepartmentsUnitsView profile={profile} />}
           {view === "users" && <UsersView />}
+          {view === "backups" && <BackupManagementView profile={profile} />}
         </main>
       </div>
     </div>
