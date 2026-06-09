@@ -146,11 +146,25 @@ export async function GET(request: NextRequest) {
       month_visits: monthUnitMap[u.id] || 0,
     }));
 
+    // Calculate real visits (excluding simulation data)
+    let realTotalVisitsQuery = adminClient.from('visits').select('id, patients!inner(full_name)', { count: 'exact', head: true }).not('patients.full_name', 'like', '[SIMULATION]%');
+    let realTodayVisitsQuery = adminClient.from('visits').select('id, patients!inner(full_name)', { count: 'exact', head: true }).not('patients.full_name', 'like', '[SIMULATION]%').gte('visit_date', todayStart).lt('visit_date', todayEnd);
+
+    if (userProfile.role === 'coordinator') {
+      realTotalVisitsQuery = realTotalVisitsQuery.in('unit_id', unitIds);
+      realTodayVisitsQuery = realTodayVisitsQuery.in('unit_id', unitIds);
+    }
+
+    const { count: realTotalVisits } = await realTotalVisitsQuery;
+    const { count: realTodayVisits } = await realTodayVisitsQuery;
+
     return NextResponse.json({
       stats: {
         totalPatients: userProfile.role === 'coordinator' ? (newPatientsRes.count || 0) : (totalPatientsRes.count || 0),
         totalVisits: totalVisitsRes.count || 0,
         todayVisits: todayVisitsRes.count || 0,
+        realTotalVisits: realTotalVisits || 0,
+        realTodayVisits: realTodayVisits || 0,
         activeUnits: activeUnitsRes.count || 0,
         newPatients: newPatientsRes.count || 0,
         returningPatients: returningRes.count || 0,
