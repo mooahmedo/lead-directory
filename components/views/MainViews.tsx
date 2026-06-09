@@ -64,7 +64,20 @@ async function resilientFetch<T>(url: string, options?: RequestInit, retries = 2
   for (let i = 0; i <= retries; i++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      const timeout = setTimeout(() => controller.abort("Timeout after 10s"), 10000);
+
+      // If the caller provided a signal (e.g. from component cleanup), link it
+      // so that aborting the external signal also aborts this request.
+      const externalSignal = options?.signal;
+      if (externalSignal) {
+        if (externalSignal.aborted) {
+          clearTimeout(timeout);
+          throw new DOMException("Request aborted by caller", "AbortError");
+        }
+        const onExternalAbort = () => controller.abort(externalSignal.reason ?? "Component unmounted");
+        externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+      }
+
       const res = await fetch(url, {
         ...options,
         signal: controller.signal,
@@ -77,6 +90,8 @@ async function resilientFetch<T>(url: string, options?: RequestInit, retries = 2
       return res.json();
     } catch (e: any) {
       lastError = e;
+      // Don't retry if the request was intentionally aborted (component unmount, navigation, etc.)
+      if (e.name === "AbortError") throw e;
       if (i < retries) await new Promise(r => setTimeout(r, 800 * (i + 1)));
     }
   }
@@ -398,6 +413,7 @@ export function PatientsView() {
       const data = await resilientFetch<any[]>(url);
       setPatients(data);
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       toast.error("فشل تحميل قائمة المرضى", { description: err.message });
     } finally {
       setLoading(false);
@@ -533,6 +549,7 @@ export function VisitsLog({ profile }: { profile: UserProfile }) {
       const data = await resilientFetch<any[]>(url);
       setVisits(data);
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       toast.error("فشل تحميل سجل الزيارات", { description: err.message });
     } finally {
       setLoading(false);
@@ -795,6 +812,7 @@ export function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
       const unts = await resilientFetch<any[]>("/api/units?includeInactive=true");
       setUnits(unts);
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       toast.error("فشل تحميل البيانات", { description: err.message });
     } finally {
       setLoading(false);
@@ -1184,6 +1202,7 @@ export function UsersView() {
       const unts = await resilientFetch<any[]>("/api/units");
       setUnits(unts);
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       toast.error("فشل تحميل قائمة المستخدمين", { description: err.message });
     } finally {
       setLoading(false);

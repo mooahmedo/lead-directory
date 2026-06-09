@@ -20,7 +20,8 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import type { DashboardStats, UnitStats } from "@/lib/types";
+import type { DashboardStats, UnitStats, UserProfile } from "@/lib/types";
+import { ExportMenu } from "./ExportMenu";
 
 // ─── Local resilientFetch (isolated from page.tsx monolith) ──────────────────
 async function resilientFetch<T>(url: string, retries = 2): Promise<T> {
@@ -28,7 +29,7 @@ async function resilientFetch<T>(url: string, retries = 2): Promise<T> {
   for (let i = 0; i <= retries; i++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      const timeout = setTimeout(() => controller.abort("Timeout after 10s"), 10000);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
       if (!res.ok) {
@@ -38,6 +39,8 @@ async function resilientFetch<T>(url: string, retries = 2): Promise<T> {
       return res.json();
     } catch (e: any) {
       lastError = e;
+      // Don't retry if the request was intentionally aborted (component unmount, navigation, etc.)
+      if (e.name === "AbortError") throw e;
       if (i < retries) await new Promise((r) => setTimeout(r, 800 * (i + 1)));
     }
   }
@@ -237,7 +240,7 @@ function UnitCard({ unit }: { unit: UnitStats }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN SUPERVISOR DASHBOARD COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
-export function SupervisorDashboard({ onLogout }: { onLogout: () => void }) {
+export function SupervisorDashboard({ onLogout, profile }: { onLogout: () => void, profile?: UserProfile }) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [units, setUnits] = useState<UnitStats[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -271,6 +274,7 @@ export function SupervisorDashboard({ onLogout }: { onLogout: () => void }) {
       data.units.forEach((u) => { deptOpen[u.department_id] = true; });
       setOpenDepts(deptOpen);
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       toast.error("فشل تحميل البيانات", { description: err.message });
     } finally {
       setLoading(false);
@@ -319,7 +323,7 @@ export function SupervisorDashboard({ onLogout }: { onLogout: () => void }) {
     .slice(0, 4);
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div id="dashboard-export-area" className="space-y-5" dir="rtl">
 
       {/* ═══ DASHBOARD HEADER ═════════════════════════════════════════════════ */}
       <div className="bg-gradient-to-l from-emerald-600 to-emerald-800 rounded-2xl p-5 shadow-xl shadow-emerald-900/20">
@@ -345,15 +349,26 @@ export function SupervisorDashboard({ onLogout }: { onLogout: () => void }) {
                 </span>
               </div>
             )}
-            <Button
-              onClick={loadData}
-              disabled={loading}
-              size="sm"
-              className="bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm h-9 px-4 text-xs font-bold transition-all gap-1.5"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-              تحديث البيانات
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={loadData}
+                disabled={loading}
+                size="sm"
+                className="bg-white/15 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm h-9 px-4 text-xs font-bold transition-all gap-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                تحديث البيانات
+              </Button>
+              {profile?.role === "supervisor" && (
+                <ExportMenu 
+                  stats={stats} 
+                  units={units} 
+                  departments={departments}
+                  filters={{ searchUnit, filterDept, filterStatus, filterDateRange }}
+                  lastUpdated={lastUpdated}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
