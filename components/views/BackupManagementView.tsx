@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Download, Database, RefreshCw, Loader2, FileText, CheckCircle2, UploadCloud, AlertTriangle, ShieldAlert } from "lucide-react";
+import { Download, Database, RefreshCw, Loader2, FileText, CheckCircle2, UploadCloud, AlertTriangle, ShieldAlert, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,12 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
   const [confirmText, setConfirmText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Reset state
+  const [resetType, setResetType] = useState<"patient_data" | "operational_data" | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetting, setResetting] = useState(false);
+
   const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
@@ -40,6 +46,61 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
+
+  // Helper to generate backup before reset
+  const generateAutomaticBackup = async (): Promise<string> => {
+    const res = await fetch("/api/backups", { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "فشل إنشاء النسخة الاحتياطية التلقائية");
+    
+    const { backup, fileName } = data;
+    const jsonStr = JSON.stringify(backup, null, 2);
+    const jsonBlob = new Blob([jsonStr], { type: "application/json" });
+    saveAs(jsonBlob, `PRE_RESET_${fileName}.json`);
+    
+    return `PRE_RESET_${fileName}.json`;
+  };
+
+  const executeReset = async () => {
+    const requiredText = resetType === "patient_data" ? "DELETE PATIENT DATA" : "DELETE OPERATIONAL DATA";
+    if (resetConfirmText !== requiredText) {
+      toast.error("يرجى إدخال نص التأكيد بشكل صحيح");
+      return;
+    }
+
+    setResetting(true);
+    const toastId = toast.loading("جاري مسح البيانات. يرجى عدم إغلاق النافذة...");
+
+    try {
+      // 1. Mandatory Backup
+      toast.loading("جاري إنشاء نسخة احتياطية إلزامية قبل المسح...", { id: toastId });
+      const backupFileName = await generateAutomaticBackup();
+
+      // 2. Execute Reset
+      toast.loading("جاري مسح البيانات المحددة...", { id: toastId });
+      const res = await fetch("/api/system/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resetType, backupFile: backupFileName }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "حدث خطأ أثناء المسح");
+
+      toast.success(data.message || `تمت عملية المسح بنجاح (حذف ${data.recordsDeleted} سجل)`, { id: toastId });
+      setShowResetModal(false);
+      setResetType(null);
+      setResetConfirmText("");
+      loadLogs();
+      
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "فشل إكمال عملية المسح", { id: toastId });
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const handleGenerateBackup = async () => {
     if (generating) return;
@@ -175,7 +236,7 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
           />
           <Button
             onClick={() => fileInputRef.current?.click()}
-            disabled={generating || restoring || profile.role !== "supervisor"}
+            disabled={generating || restoring || resetting || profile.role !== "supervisor"}
             variant="outline"
             className="border-blue-200 text-blue-700 hover:bg-blue-50 font-bold h-10 px-4 flex items-center gap-2"
           >
@@ -184,7 +245,7 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
           </Button>
           <Button
             onClick={handleGenerateBackup}
-            disabled={generating || restoring || profile.role !== "supervisor"}
+            disabled={generating || restoring || resetting || profile.role !== "supervisor"}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 px-4 flex items-center gap-2"
           >
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
@@ -270,6 +331,49 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
         </CardContent>
       </Card>
 
+      {/* Danger Zone */}
+      <Card className="border-red-200 shadow-md bg-white overflow-hidden mt-8">
+        <CardHeader className="bg-red-50/50 border-b border-red-100">
+          <CardTitle className="text-red-700 flex items-center gap-2 text-sm font-bold">
+            <AlertTriangle className="w-5 h-5" /> منطقة الخطر (Danger Zone)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="border border-gray-200 rounded-xl p-5 hover:border-red-300 transition-colors bg-white shadow-sm">
+              <h3 className="font-bold text-gray-800 text-sm">مسح بيانات المرضى والزيارات</h3>
+              <p className="text-xs text-gray-500 mt-2 mb-4 leading-relaxed">
+                يؤدي هذا الإجراء إلى حذف جميع سجلات المرضى والزيارات المرتبطة بهم بالكامل. لن يتم حذف المستخدمين أو الإدارات.
+                سيتم تنزيل نسخة احتياطية تلقائياً قبل المسح.
+              </p>
+              <Button
+                onClick={() => { setResetType("patient_data"); setShowResetModal(true); }}
+                disabled={generating || restoring || resetting || profile.role !== "supervisor"}
+                variant="outline"
+                className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 h-9 text-xs font-bold"
+              >
+                <Trash2 className="w-3.5 h-3.5 ml-1.5" /> تفريغ بيانات المرضى
+              </Button>
+            </div>
+
+            <div className="border border-red-200 rounded-xl p-5 hover:border-red-300 transition-colors bg-red-50/30 shadow-sm">
+              <h3 className="font-bold text-red-800 text-sm">إعادة ضبط النظام (Operational Reset)</h3>
+              <p className="text-xs text-red-600 mt-2 mb-4 leading-relaxed">
+                مسح شامل يشمل جميع بيانات المرضى، الزيارات، والمستخدمين (باستثناء حساب المشرف الحالي). ستبقى الوحدات والإدارات كما هي.
+                سيتم تنزيل نسخة احتياطية تلقائياً قبل المسح.
+              </p>
+              <Button
+                onClick={() => { setResetType("operational_data"); setShowResetModal(true); }}
+                disabled={generating || restoring || resetting || profile.role !== "supervisor"}
+                className="w-full bg-red-600 hover:bg-red-700 text-white h-9 text-xs font-bold"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 ml-1.5" /> إعادة ضبط النظام بالكامل
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Restore Confirmation Modal */}
       {showRestoreModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" dir="rtl">
@@ -320,6 +424,64 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
                 >
                   {restoring ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد واسترجاع"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Reset Confirmation Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" dir="rtl">
+          <Card className="w-full max-w-md border-2 border-red-600 shadow-2xl bg-white rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <CardHeader className="bg-red-600 text-white flex flex-row items-start gap-3 p-5">
+              <AlertTriangle className="w-6 h-6 text-white shrink-0 mt-0.5" />
+              <div>
+                <CardTitle className="text-white font-bold">تأكيد عملية المسح الإلزامي</CardTitle>
+                <p className="text-xs text-red-100 mt-1 leading-relaxed">
+                  {resetType === "patient_data"
+                    ? "أنت على وشك مسح جميع بيانات المرضى والزيارات. لن تتمكن من استرجاعها بدون النسخة الاحتياطية التي سيتم إنشاؤها تلقائياً."
+                    : "أنت على وشك إجراء مسح شامل للمنصة. سيتم مسح بيانات المرضى والزيارات والمستخدمين."}
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700">
+                  لتأكيد العملية، اكتب: {resetType === "patient_data" ? "DELETE PATIENT DATA" : "DELETE OPERATIONAL DATA"}
+                </label>
+                <Input
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  dir="ltr"
+                  placeholder={resetType === "patient_data" ? "DELETE PATIENT DATA" : "DELETE OPERATIONAL DATA"}
+                  className="font-mono text-center bg-gray-50 focus:border-red-500 focus:ring-red-500"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => {
+                    setShowResetModal(false);
+                    setResetType(null);
+                    setResetConfirmText("");
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={resetting}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={executeReset}
+                  disabled={
+                    resetting ||
+                    (resetType === "patient_data" && resetConfirmText !== "DELETE PATIENT DATA") ||
+                    (resetType === "operational_data" && resetConfirmText !== "DELETE OPERATIONAL DATA")
+                  }
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
+                >
+                  {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : "تأكيد ومسح البيانات"}
                 </Button>
               </div>
             </CardContent>
