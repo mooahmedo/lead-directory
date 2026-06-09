@@ -31,7 +31,13 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
 
   // Simulation state
   const [simulating, setSimulating] = useState(false);
-  const [simCounts, setSimCounts] = useState<{ patientsCreated: number; visitsCreated: number; screeningsCreated: number; followUpsCreated: number } | null>(null);
+  const [simReport, setSimReport] = useState<{
+    counts: { patientsCreated: number; visitsCreated: number; screeningsCreated: number; followUpsCreated: number };
+    failures: { patientsFailed: number; visitsFailed: number; total: number };
+    summary: { requested: number; created: number; failed: number; successRate: string };
+    errors: Array<{ index: number; stage: string; message: string }>;
+    integrityIssues: string[];
+  } | null>(null);
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
@@ -385,40 +391,91 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
             <RefreshCw className="w-5 h-5" /> وضع المحاكاة والتجربة (Simulation Mode)
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6 space-y-4">
-          {/* Generation counts feedback */}
-          {simCounts && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-              <p className="text-[11px] font-bold text-indigo-800 mb-3 flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" /> تم توليد البيانات بنجاح — ارجع للوحة التحكم لرؤية النتائج
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
-                {[
-                  { label: "المرضى", value: simCounts.patientsCreated, color: "text-blue-700" },
-                  { label: "الزيارات", value: simCounts.visitsCreated, color: "text-emerald-700" },
-                  { label: "الفحوصات", value: simCounts.screeningsCreated, color: "text-purple-700" },
-                  { label: "المتابعات", value: simCounts.followUpsCreated, color: "text-amber-700" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="bg-white rounded-lg p-3 border border-indigo-100">
-                    <p className={`text-lg font-black ${color}`}>{value}</p>
-                    <p className="text-[10px] text-gray-500 font-medium">{label}</p>
-                  </div>
-                ))}
+        <CardContent className="p-6 space-y-5">
+
+          {/* Generation report panel */}
+          {simReport && (
+            <div className="space-y-3">
+              {/* Summary row */}
+              <div className={`border rounded-xl p-4 ${simReport.failures.total === 0 ? 'bg-emerald-50 border-emerald-200' : simReport.counts.patientsCreated > 0 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+                <p className={`text-[11px] font-bold mb-3 flex items-center gap-1.5 ${simReport.failures.total === 0 ? 'text-emerald-800' : simReport.counts.patientsCreated > 0 ? 'text-amber-800' : 'text-red-800'}`}>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {simReport.failures.total === 0
+                    ? 'تم توليد جميع السجلات بنجاح — راجع لوحة التحكم لرؤية النتائج'
+                    : simReport.counts.patientsCreated > 0
+                    ? `اكتمل جزئياً — ${simReport.summary.created} من ${simReport.summary.requested} (${simReport.summary.successRate})`
+                    : 'فشل التوليد — راجع تفاصيل الأخطاء أدناه'}
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
+                  {[
+                    { label: 'المرضى', value: simReport.counts.patientsCreated, color: 'text-blue-700', bg: 'bg-blue-50' },
+                    { label: 'الزيارات', value: simReport.counts.visitsCreated, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+                    { label: 'الفحوصات', value: simReport.counts.screeningsCreated, color: 'text-purple-700', bg: 'bg-purple-50' },
+                    { label: 'المتابعات', value: simReport.counts.followUpsCreated, color: 'text-amber-700', bg: 'bg-amber-50' },
+                  ].map(({ label, value, color, bg }) => (
+                    <div key={label} className={`${bg} rounded-lg p-3 border border-white`}>
+                      <p className={`text-lg font-black ${color}`}>{value}</p>
+                      <p className="text-[10px] text-gray-500 font-medium">{label}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* Failure summary */}
+              {simReport.failures.total > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-[11px] font-bold text-red-800 mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" /> سجلات فاشلة — {simReport.failures.total} فشل
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-center mb-3">
+                    <div className="bg-white rounded-lg p-2 border border-red-100">
+                      <p className="text-sm font-black text-red-600">{simReport.failures.patientsFailed}</p>
+                      <p className="text-[10px] text-gray-500">مرضى فاشلون</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-2 border border-red-100">
+                      <p className="text-sm font-black text-orange-600">{simReport.failures.visitsFailed}</p>
+                      <p className="text-[10px] text-gray-500">زيارات فاشلة</p>
+                    </div>
+                  </div>
+                  {/* Error detail list */}
+                  {simReport.errors.length > 0 && (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                      {simReport.errors.map((e, idx) => (
+                        <div key={idx} className="text-[10px] bg-white rounded p-2 border border-red-100 font-mono text-red-700 break-all">
+                          [{e.stage}] #{e.index + 1}: {e.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Integrity issues */}
+              {simReport.integrityIssues.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <p className="text-[11px] font-bold text-amber-800 mb-1.5">⚠ مشكلات سلامة البيانات</p>
+                  {simReport.integrityIssues.map((issue, idx) => (
+                    <p key={idx} className="text-[10px] font-mono text-amber-700">{issue}</p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
+          {/* Action buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Generate */}
             <div className="border border-gray-200 rounded-xl p-5 hover:border-indigo-300 transition-colors bg-white shadow-sm">
               <h3 className="font-bold text-gray-800 text-sm">توليد بيانات تجريبية (Demo Data)</h3>
               <p className="text-xs text-gray-500 mt-2 mb-4 leading-relaxed">
-                توليد 50 سجل مرضى وزيارات عشوائية لأغراض التجربة واختبار النظام. يتم تمييز هذه السجلات بكلمة [SIMULATION] في اسم المريض لسهولة التعرف عليها. تُسجَّل الزيارات لليوم الحالي لتظهر في لوحة التحكم.
+                توليد 50 مريض وزيارة لأغراض الاختبار. كل مريض يحصل على معرّف وطني فريد مضمون.
+                تُسجَّل الزيارات لليوم الحالي لتظهر فوراً في لوحة التحكم وKPI cards.
               </p>
               <Button
                 onClick={async () => {
                   setSimulating(true);
-                  setSimCounts(null);
-                  const toastId = toast.loading("جاري توليد البيانات التجريبية (المرحلة 1: مرضى، المرحلة 2: زيارات)...");
+                  setSimReport(null);
+                  const toastId = toast.loading("جاري توليد السجلات بشكل فردي مع التحقق من الفرادة...");
                   try {
                     const res = await fetch("/api/system/simulate", {
                       method: "POST",
@@ -426,19 +483,21 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
                       body: JSON.stringify({ action: "generate", count: 50 }),
                     });
                     const data = await res.json();
-                    if (!res.ok) {
-                      // Show full diagnostic error from backend
+
+                    // Always set the report if we have structured data
+                    if (data.counts) setSimReport(data);
+
+                    if (data.counts?.patientsCreated > 0) {
+                      toast.success(
+                        `✅ ${data.counts.patientsCreated} مريض / ${data.counts.visitsCreated} زيارة — راجع لوحة التحكم`,
+                        { id: toastId, duration: 6000 }
+                      );
+                    } else {
                       toast.error(
-                        data.error + (data.hint ? `\nتلميح: ${data.hint}` : ""),
+                        data.error || "فشل التوليد — راجع تقرير الأخطاء",
                         { id: toastId, duration: 10000 }
                       );
-                      return;
                     }
-                    setSimCounts(data.counts);
-                    toast.success(
-                      `✅ تم توليد ${data.counts.patientsCreated} مريض و${data.counts.visitsCreated} زيارة — راجع لوحة التحكم`,
-                      { id: toastId, duration: 6000 }
-                    );
                   } catch (err: any) {
                     toast.error(err.message || "خطأ غير متوقع", { id: toastId, duration: 8000 });
                   } finally {
@@ -449,20 +508,23 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
                 variant="outline"
                 className="w-full border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800 h-9 text-xs font-bold"
               >
-                {simulating ? <Loader2 className="w-3.5 h-3.5 animate-spin ml-1.5" /> : null}
-                {simulating ? "جاري التوليد..." : "توليد 50 سجل عشوائي"}
+                {simulating
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin ml-1.5" />جاري التوليد...</>
+                  : "توليد 50 سجل عشوائي"}
               </Button>
             </div>
 
+            {/* Cleanup */}
             <div className="border border-gray-200 rounded-xl p-5 hover:border-orange-300 transition-colors bg-orange-50/30 shadow-sm">
               <h3 className="font-bold text-orange-800 text-sm">تنظيف بيانات المحاكاة</h3>
               <p className="text-xs text-orange-600 mt-2 mb-4 leading-relaxed">
-                حذف جميع السجلات التي تم إنشاؤها عبر وضع المحاكاة (التي يبدأ اسمها بـ [SIMULATION]) دون التأثير على البيانات الحقيقية للنظام.
+                حذف جميع السجلات المميّزة بـ [SIMULATION] دون التأثير على البيانات الحقيقية.
+                تُحذف الزيارات المرتبطة تلقائياً بفضل قيد ON DELETE CASCADE.
               </p>
               <Button
                 onClick={async () => {
                   setSimulating(true);
-                  setSimCounts(null);
+                  setSimReport(null);
                   const toastId = toast.loading("جاري تنظيف بيانات المحاكاة...");
                   try {
                     const res = await fetch("/api/system/simulate", {
@@ -482,13 +544,15 @@ export function BackupManagementView({ profile }: { profile: UserProfile }) {
                 disabled={simulating || generating || restoring || resetting || profile.role !== "supervisor"}
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white h-9 text-xs font-bold"
               >
-                {simulating ? <Loader2 className="w-3.5 h-3.5 animate-spin ml-1.5" /> : null}
-                حذف البيانات التجريبية
+                {simulating
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin ml-1.5" />جاري الحذف...</>
+                  : "حذف البيانات التجريبية"}
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
 
       {/* Restore Confirmation Modal */}
       {showRestoreModal && (
