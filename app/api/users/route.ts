@@ -1,26 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 // Helper to check if request is from supervisor
-async function getCallerProfile(request: NextRequest) {
-  const cookieStore = await cookies();
-  const supabaseAuth = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {},
-      },
-    }
-  );
-
+async function getCallerProfile() {
+  const supabaseAuth = await createClient();
   const { data: { user } } = await supabaseAuth.auth.getUser();
   if (!user) return null;
 
@@ -36,7 +22,7 @@ async function getCallerProfile(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const profile = await getCallerProfile(request);
+    const profile = await getCallerProfile();
     if (!profile || profile.role !== "supervisor" || !profile.active) {
       return NextResponse.json({ error: "غير مصرح — صلاحية المشرف مطلوبة" }, { status: 403 });
     }
@@ -75,7 +61,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const profile = await getCallerProfile(request);
+    const profile = await getCallerProfile();
     if (!profile || profile.role !== "supervisor" || !profile.active) {
       return NextResponse.json({ error: "غير مصرح — صلاحية المشرف مطلوبة" }, { status: 403 });
     }
@@ -153,7 +139,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const profile = await getCallerProfile(request);
+    const profile = await getCallerProfile();
     if (!profile || profile.role !== "supervisor" || !profile.active) {
       return NextResponse.json({ error: "غير مصرح — صلاحية المشرف مطلوبة" }, { status: 403 });
     }
@@ -229,7 +215,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const profile = await getCallerProfile(request);
+    const profile = await getCallerProfile();
     if (!profile || profile.role !== "supervisor" || !profile.active) {
       return NextResponse.json({ error: "غير مصرح — صلاحية المشرف مطلوبة" }, { status: 403 });
     }

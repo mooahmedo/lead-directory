@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { parseNationalId, formatBirthDate } from "@/lib/national-id";
 import type { Department, HealthUnit, VisitSubmission, DashboardStats, UnitStats, UserProfile } from "@/lib/types";
+import { SupervisorDashboard } from "@/components/dashboard/SupervisorDashboard";
 import { Toaster, toast } from "sonner";
 import {
   Heart, Wifi, WifiOff, LogIn, LogOut, ChevronDown, ChevronUp,
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/collapsible";
 import * as XLSX from "xlsx";
 
-// ─── Offline Queue ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Offline Queue â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const OFFLINE_QUEUE_KEY = "cdms_offline_queue";
 const DEPARTMENTS_CACHE_KEY = "cdms_departments_cache";
 const UNITS_CACHE_KEY = "cdms_units_cache";
@@ -57,7 +58,7 @@ function removeFromQueue(id: string) {
   saveQueue(loadQueue().filter(v => v._id !== id));
 }
 
-// ─── Resilient Fetch ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Resilient Fetch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function resilientFetch<T>(url: string, options?: RequestInit, retries = 2): Promise<T> {
   let lastError: Error = new Error("Fetch failed");
   for (let i = 0; i <= retries; i++) {
@@ -82,9 +83,9 @@ async function resilientFetch<T>(url: string, options?: RequestInit, retries = 2
   throw lastError;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // MAIN PAGE COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 export default function Page() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [view, setView] = useState<"login" | "change-password" | "dashboard" | "visits" | "patients" | "departments-units" | "users">("login");
@@ -183,7 +184,7 @@ export default function Page() {
           });
           removeFromQueue(item._id);
           setPendingCount(prev => Math.max(0, prev - 1));
-          toast.success(`تم مزامنة بيانات ${item.fullName}`);
+          toast.success(`طھظ… ظ…ط²ط§ظ…ظ†ط© ط¨ظٹط§ظ†ط§طھ ${item.fullName}`);
         } catch {
           // Leave in queue, try next time
         }
@@ -197,7 +198,7 @@ export default function Page() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50" dir="rtl">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-emerald-800 text-sm font-semibold">جاري التحقق من الجلسة...</p>
+          <p className="text-emerald-800 text-sm font-semibold">ط¬ط§ط±ظٹ ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ط§ظ„ط¬ظ„ط³ط©...</p>
         </div>
       </div>
     );
@@ -225,11 +226,11 @@ export default function Page() {
 
   // Sidebar navigation options based on role
   const menuItems = [
-    { id: "dashboard", label: "لوحة التحكم", icon: <Activity className="w-5 h-5" />, roles: ["supervisor", "coordinator"] },
-    { id: "visits", label: "تسجيل الزيارات", icon: <ClipboardList className="w-5 h-5" />, roles: ["nurse", "supervisor", "coordinator"] },
-    { id: "patients", label: "قائمة المرضى", icon: <Users className="w-5 h-5" />, roles: ["supervisor"] },
-    { id: "departments-units", label: "الإدارات والوحدات", icon: <Building2 className="w-5 h-5" />, roles: ["supervisor", "coordinator"] },
-    { id: "users", label: "المستخدمين", icon: <Shield className="w-5 h-5" />, roles: ["supervisor"] },
+    { id: "dashboard", label: "ظ„ظˆط­ط© ط§ظ„طھط­ظƒظ…", icon: <Activity className="w-5 h-5" />, roles: ["supervisor", "coordinator"] },
+    { id: "visits", label: "طھط³ط¬ظٹظ„ ط§ظ„ط²ظٹط§ط±ط§طھ", icon: <ClipboardList className="w-5 h-5" />, roles: ["nurse", "supervisor", "coordinator"] },
+    { id: "patients", label: "ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ط±ط¶ظ‰", icon: <Users className="w-5 h-5" />, roles: ["supervisor"] },
+    { id: "departments-units", label: "ط§ظ„ط¥ط¯ط§ط±ط§طھ ظˆط§ظ„ظˆط­ط¯ط§طھ", icon: <Building2 className="w-5 h-5" />, roles: ["supervisor", "coordinator"] },
+    { id: "users", label: "ط§ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†", icon: <Shield className="w-5 h-5" />, roles: ["supervisor"] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => item.roles.includes(profile.role));
@@ -237,14 +238,14 @@ export default function Page() {
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    toast.success("تم تسجيل الخروج بنجاح");
+    toast.success("طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬ ط¨ظ†ط¬ط§ط­");
   };
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden" dir="rtl">
       <Toaster position="top-center" richColors dir="rtl" />
 
-      {/* ─── Sidebar for Desktop & Mobile ─── */}
+      {/* â”€â”€â”€ Sidebar for Desktop & Mobile â”€â”€â”€ */}
       <div
         className={`fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity md:hidden ${
           isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
@@ -264,8 +265,8 @@ export default function Page() {
               <Heart className="w-6 h-6 fill-white" />
             </div>
             <div>
-              <h2 className="font-bold text-sm leading-tight">الأمراض المزمنة</h2>
-              <p className="text-[10px] text-emerald-300">مديرية الصحة بسوهاج</p>
+              <h2 className="font-bold text-sm leading-tight">ط§ظ„ط£ظ…ط±ط§ط¶ ط§ظ„ظ…ط²ظ…ظ†ط©</h2>
+              <p className="text-[10px] text-emerald-300">ظ…ط¯ظٹط±ظٹط© ط§ظ„طµط­ط© ط¨ط³ظˆظ‡ط§ط¬</p>
             </div>
           </div>
           <button className="md:hidden p-1 text-emerald-300 hover:text-white" onClick={() => setIsSidebarOpen(false)}>
@@ -306,7 +307,7 @@ export default function Page() {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold truncate text-white leading-tight">{profile.full_name}</p>
               <p className="text-[10px] text-emerald-400 capitalize truncate mt-0.5">
-                {profile.role === "supervisor" ? "منسق عام المبادرة" : profile.role === "coordinator" ? "منسق إدارة" : "ممرض / ممرضة"}
+                {profile.role === "supervisor" ? "ظ…ظ†ط³ظ‚ ط¹ط§ظ… ط§ظ„ظ…ط¨ط§ط¯ط±ط©" : profile.role === "coordinator" ? "ظ…ظ†ط³ظ‚ ط¥ط¯ط§ط±ط©" : "ظ…ظ…ط±ط¶ / ظ…ظ…ط±ط¶ط©"}
               </p>
             </div>
           </div>
@@ -317,12 +318,12 @@ export default function Page() {
             className="w-full justify-start text-emerald-300 hover:text-white hover:bg-emerald-900/50 text-xs gap-2"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>تسجيل الخروج</span>
+            <span>طھط³ط¬ظٹظ„ ط§ظ„ط®ط±ظˆط¬</span>
           </Button>
         </div>
       </aside>
 
-      {/* ─── Main Content Container ─── */}
+      {/* â”€â”€â”€ Main Content Container â”€â”€â”€ */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Navbar */}
         <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 shadow-sm z-30">
@@ -334,11 +335,11 @@ export default function Page() {
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="font-bold text-base text-gray-800 md:text-lg">
-              {view === "dashboard" && "لوحة التحكم"}
-              {view === "visits" && "تسجيل ومتابعة الزيارات"}
-              {view === "patients" && "قائمة المرضى المسجلين"}
-              {view === "departments-units" && "إدارة الإدارات الصحية والوحدات"}
-              {view === "users" && "إدارة المستخدمين وحسابات الممرضين"}
+              {view === "dashboard" && "ظ„ظˆط­ط© ط§ظ„طھط­ظƒظ…"}
+              {view === "visits" && "طھط³ط¬ظٹظ„ ظˆظ…طھط§ط¨ط¹ط© ط§ظ„ط²ظٹط§ط±ط§طھ"}
+              {view === "patients" && "ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ط±ط¶ظ‰ ط§ظ„ظ…ط³ط¬ظ„ظٹظ†"}
+              {view === "departments-units" && "ط¥ط¯ط§ط±ط© ط§ظ„ط¥ط¯ط§ط±ط§طھ ط§ظ„طµط­ظٹط© ظˆط§ظ„ظˆط­ط¯ط§طھ"}
+              {view === "users" && "ط¥ط¯ط§ط±ط© ط§ظ„ظ…ط³طھط®ط¯ظ…ظٹظ† ظˆط­ط³ط§ط¨ط§طھ ط§ظ„ظ…ظ…ط±ط¶ظٹظ†"}
             </h1>
           </div>
 
@@ -350,18 +351,18 @@ export default function Page() {
               {isOnline ? (
                 <>
                   <Wifi className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-                  <span>متصل بالشبكة</span>
+                  <span>ظ…طھطµظ„ ط¨ط§ظ„ط´ط¨ظƒط©</span>
                 </>
               ) : (
                 <>
                   <WifiOff className="w-3.5 h-3.5 text-red-600 animate-pulse" />
-                  <span>وضع الأوفلاين</span>
+                  <span>ظˆط¶ط¹ ط§ظ„ط£ظˆظپظ„ط§ظٹظ†</span>
                 </>
               )}
             </div>
             {pendingCount > 0 && (
               <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] py-0.5 px-2">
-                {pendingCount} معلق
+                {pendingCount} ظ…ط¹ظ„ظ‚
               </Badge>
             )}
           </div>
@@ -380,9 +381,9 @@ export default function Page() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // SYSTEM LOGIN (Username + Password)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 function SystemLogin({ onSuccess, onViewChange }: { onSuccess: () => Promise<void>; onViewChange: (v: any) => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -391,7 +392,7 @@ function SystemLogin({ onSuccess, onViewChange }: { onSuccess: () => Promise<voi
 
   const handleLogin = async () => {
     if (!username || !password) {
-      toast.error("يرجى إدخال اسم المستخدم وكلمة المرور");
+      toast.error("ظٹط±ط¬ظ‰ ط¥ط¯ط®ط§ظ„ ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ… ظˆظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±");
       return;
     }
     setLoading(true);
@@ -403,19 +404,19 @@ function SystemLogin({ onSuccess, onViewChange }: { onSuccess: () => Promise<voi
         body: JSON.stringify({ username: username.trim().toLowerCase() }),
       });
       const lookupData = await lookupRes.json();
-      if (!lookupRes.ok) throw new Error(lookupData.error || "اسم المستخدم غير صحيح");
+      if (!lookupRes.ok) throw new Error(lookupData.error || "ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ… ط؛ظٹط± طµط­ظٹط­");
 
       // Step 2: Sign in with the resolved email
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({ email: lookupData.email, password });
-      if (error) throw new Error("كلمة المرور غير صحيحة");
+      if (error) throw new Error("ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط؛ظٹط± طµط­ظٹط­ط©");
 
       // Step 3: Call parent to set profile and redirect
       await onSuccess();
     } catch (err: any) {
       const supabase = createClient();
       await supabase.auth.signOut().catch(() => {});
-      toast.error("فشل تسجيل الدخول", { description: err.message });
+      toast.error("ظپط´ظ„ طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„", { description: err.message });
     } finally {
       setLoading(false);
     }
@@ -429,20 +430,20 @@ function SystemLogin({ onSuccess, onViewChange }: { onSuccess: () => Promise<voi
           <div className="mx-auto w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center shadow-lg border border-white/20 mb-4 animate-bounce">
             <Heart className="w-9 h-9 text-emerald-400 fill-emerald-400" />
           </div>
-          <h2 className="text-2xl font-black text-white leading-tight">مبادرة الأمراض المزمنة</h2>
-          <p className="text-sm text-emerald-200/80 mt-2">مديرية الصحة بسوهاج — تسجيل الدخول</p>
+          <h2 className="text-2xl font-black text-white leading-tight">ظ…ط¨ط§ط¯ط±ط© ط§ظ„ط£ظ…ط±ط§ط¶ ط§ظ„ظ…ط²ظ…ظ†ط©</h2>
+          <p className="text-sm text-emerald-200/80 mt-2">ظ…ط¯ظٹط±ظٹط© ط§ظ„طµط­ط© ط¨ط³ظˆظ‡ط§ط¬ â€” طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„</p>
         </div>
 
         <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-3xl overflow-hidden">
           <CardHeader className="bg-emerald-600 py-5 text-center text-white">
-            <CardTitle className="text-lg font-bold">تسجيل الدخول للنظام</CardTitle>
+            <CardTitle className="text-lg font-bold">طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„ ظ„ظ„ظ†ط¸ط§ظ…</CardTitle>
           </CardHeader>
           <CardContent className="pt-6 pb-6 px-6 space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-semibold text-gray-700">اسم المستخدم</Label>
+              <Label className="text-sm font-semibold text-gray-700">ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ…</Label>
               <Input
                 type="text"
-                placeholder="مثال: nurse_shg001"
+                placeholder="ظ…ط«ط§ظ„: nurse_shg001"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 className="h-11 text-sm border-gray-200 focus:border-emerald-500"
@@ -454,11 +455,11 @@ function SystemLogin({ onSuccess, onViewChange }: { onSuccess: () => Promise<voi
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm font-semibold text-gray-700">كلمة المرور</Label>
+              <Label className="text-sm font-semibold text-gray-700">ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±</Label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="h-11 text-sm border-gray-200 focus:border-emerald-500 pr-10"
@@ -485,12 +486,12 @@ function SystemLogin({ onSuccess, onViewChange }: { onSuccess: () => Promise<voi
               {loading ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>جارٍ التحقق...</span>
+                  <span>ط¬ط§ط±ظچ ط§ظ„طھط­ظ‚ظ‚...</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <LogIn className="w-4 h-4 text-white" />
-                  <span>دخول</span>
+                  <span>ط¯ط®ظˆظ„</span>
                 </div>
               )}
             </Button>
@@ -501,9 +502,9 @@ function SystemLogin({ onSuccess, onViewChange }: { onSuccess: () => Promise<voi
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // FORCE CHANGE PASSWORD VIEW
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSuccess: () => void }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -513,11 +514,11 @@ function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSu
 
   const handleChange = async () => {
     if (!newPassword || newPassword.length < 8) {
-      toast.error("كلمة المرور يجب أن تكون 8 أحرف على الأقل");
+      toast.error("ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظٹط¬ط¨ ط£ظ† طھظƒظˆظ† 8 ط£ط­ط±ظپ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„");
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("كلمتا المرور غير متطابقتين");
+      toast.error("ظƒظ„ظ…طھط§ ط§ظ„ظ…ط±ظˆط± ط؛ظٹط± ظ…طھط·ط§ط¨ظ‚طھظٹظ†");
       return;
     }
     setLoading(true);
@@ -533,10 +534,10 @@ function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSu
         body: JSON.stringify({ id: profile.id, mustChangePassword: false }),
       });
 
-      toast.success("تم تغيير كلمة المرور بنجاح");
+      toast.success("طھظ… طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط¨ظ†ط¬ط§ط­");
       onSuccess();
     } catch (err: any) {
-      toast.error("فشل تغيير كلمة المرور", { description: err.message });
+      toast.error("ظپط´ظ„ طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±", { description: err.message });
     } finally {
       setLoading(false);
     }
@@ -550,21 +551,21 @@ function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSu
           <div className="mx-auto w-16 h-16 bg-amber-500/20 rounded-2xl flex items-center justify-center shadow-lg border border-amber-400/30 mb-4">
             <Shield className="w-9 h-9 text-amber-400" />
           </div>
-          <h2 className="text-2xl font-black text-white leading-tight">تغيير كلمة المرور</h2>
-          <p className="text-sm text-emerald-200/80 mt-2">يجب تغيير كلمة المرور المؤقتة قبل المتابعة</p>
+          <h2 className="text-2xl font-black text-white leading-tight">طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±</h2>
+          <p className="text-sm text-emerald-200/80 mt-2">ظٹط¬ط¨ طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ظ…ط¤ظ‚طھط© ظ‚ط¨ظ„ ط§ظ„ظ…طھط§ط¨ط¹ط©</p>
         </div>
 
         <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-3xl overflow-hidden">
           <CardHeader className="bg-amber-500 py-5 text-center text-white">
-            <CardTitle className="text-sm font-bold">مرحباً {profile.full_name} — أدخل كلمة مرور جديدة</CardTitle>
+            <CardTitle className="text-sm font-bold">ظ…ط±ط­ط¨ط§ظ‹ {profile.full_name} â€” ط£ط¯ط®ظ„ ظƒظ„ظ…ط© ظ…ط±ظˆط± ط¬ط¯ظٹط¯ط©</CardTitle>
           </CardHeader>
           <CardContent className="pt-6 pb-6 px-6 space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-semibold text-gray-700">كلمة المرور الجديدة *</Label>
+              <Label className="text-sm font-semibold text-gray-700">ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ط¬ط¯ظٹط¯ط© *</Label>
               <div className="relative">
                 <Input
                   type={showNew ? "text" : "password"}
-                  placeholder="8 أحرف على الأقل"
+                  placeholder="8 ط£ط­ط±ظپ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   className="h-11 text-sm border-gray-200 focus:border-amber-500 pr-10"
@@ -578,11 +579,11 @@ function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSu
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm font-semibold text-gray-700">تأكيد كلمة المرور *</Label>
+              <Label className="text-sm font-semibold text-gray-700">طھط£ظƒظٹط¯ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± *</Label>
               <div className="relative">
                 <Input
                   type={showConfirm ? "text" : "password"}
-                  placeholder="أعد إدخال كلمة المرور"
+                  placeholder="ط£ط¹ط¯ ط¥ط¯ط®ط§ظ„ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   className="h-11 text-sm border-gray-200 focus:border-amber-500 pr-10"
@@ -602,9 +603,9 @@ function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSu
                   ? "bg-emerald-50 text-emerald-700"
                   : "bg-red-50 text-red-600"
               }`}>
-                {newPassword.length < 8 ? "⚠ كلمة المرور قصيرة جداً" :
-                 newPassword !== confirmPassword ? "⚠ كلمتا المرور غير متطابقتين" :
-                 "✓ كلمة المرور مقبولة"}
+                {newPassword.length < 8 ? "âڑ  ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ‚طµظٹط±ط© ط¬ط¯ط§ظ‹" :
+                 newPassword !== confirmPassword ? "âڑ  ظƒظ„ظ…طھط§ ط§ظ„ظ…ط±ظˆط± ط؛ظٹط± ظ…طھط·ط§ط¨ظ‚طھظٹظ†" :
+                 "âœ“ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ظ…ظ‚ط¨ظˆظ„ط©"}
               </div>
             )}
 
@@ -613,7 +614,7 @@ function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSu
               disabled={loading}
               className="w-full h-12 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-sm transition-all"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "حفظ كلمة المرور الجديدة"}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "ط­ظپط¸ ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ط¬ط¯ظٹط¯ط©"}
             </Button>
           </CardContent>
         </Card>
@@ -622,9 +623,9 @@ function ChangePasswordView({ profile, onSuccess }: { profile: UserProfile; onSu
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // VISITS VIEW (Unified View containing Form + Logs)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 function VisitsView({
   isOnline,
   onPendingChange,
@@ -649,7 +650,7 @@ function VisitsView({
                   : "text-gray-500 hover:text-gray-800 hover:bg-slate-50"
               }`}
             >
-              تسجيل زيارة جديدة
+              طھط³ط¬ظٹظ„ ط²ظٹط§ط±ط© ط¬ط¯ظٹط¯ط©
             </button>
           )}
           <button
@@ -660,7 +661,7 @@ function VisitsView({
                 : "text-gray-500 hover:text-gray-800 hover:bg-slate-50"
             }`}
           >
-            سجل الزيارات اليومية
+            ط³ط¬ظ„ ط§ظ„ط²ظٹط§ط±ط§طھ ط§ظ„ظٹظˆظ…ظٹط©
           </button>
         </div>
       )}
@@ -676,9 +677,9 @@ function VisitsView({
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // PATIENTS LOG VIEW
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 function PatientsView() {
   const [patients, setPatients] = useState<any[]>([]);
   const [search, setSearch] = useState("");
@@ -691,7 +692,7 @@ function PatientsView() {
       const data = await resilientFetch<any[]>(url);
       setPatients(data);
     } catch (err: any) {
-      toast.error("فشل تحميل قائمة المرضى", { description: err.message });
+      toast.error("ظپط´ظ„ طھط­ظ…ظٹظ„ ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ط±ط¶ظ‰", { description: err.message });
     } finally {
       setLoading(false);
     }
@@ -708,21 +709,21 @@ function PatientsView() {
         <div className="relative flex-1">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
-            placeholder="ابحث بالاسم أو الرقم القومي..."
+            placeholder="ط§ط¨ط­ط« ط¨ط§ظ„ط§ط³ظ… ط£ظˆ ط§ظ„ط±ظ‚ظ… ط§ظ„ظ‚ظˆظ…ظٹ..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="h-10 text-xs pr-10 border-gray-200 focus:border-emerald-500 bg-white"
           />
         </div>
         <Button onClick={loadPatients} size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-10 px-4">
-          بحث
+          ط¨ط­ط«
         </Button>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center py-20 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          <p className="text-xs text-gray-400">جاري تحميل قائمة المرضى...</p>
+          <p className="text-xs text-gray-400">ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ط±ط¶ظ‰...</p>
         </div>
       ) : (
         <Card className="border-0 shadow-md bg-white overflow-hidden">
@@ -730,13 +731,13 @@ function PatientsView() {
             <table className="w-full text-right border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-gray-100 text-xs font-bold text-gray-500">
-                  <th className="p-4">الاسم بالكامل</th>
-                  <th className="p-4">الرقم القومي</th>
-                  <th className="p-4">السن</th>
-                  <th className="p-4">النوع</th>
-                  <th className="p-4">المحافظة</th>
-                  <th className="p-4">تاريخ التسجيل</th>
-                  <th className="p-4">رقم الهاتف</th>
+                  <th className="p-4">ط§ظ„ط§ط³ظ… ط¨ط§ظ„ظƒط§ظ…ظ„</th>
+                  <th className="p-4">ط§ظ„ط±ظ‚ظ… ط§ظ„ظ‚ظˆظ…ظٹ</th>
+                  <th className="p-4">ط§ظ„ط³ظ†</th>
+                  <th className="p-4">ط§ظ„ظ†ظˆط¹</th>
+                  <th className="p-4">ط§ظ„ظ…ط­ط§ظپط¸ط©</th>
+                  <th className="p-4">طھط§ط±ظٹط® ط§ظ„طھط³ط¬ظٹظ„</th>
+                  <th className="p-4">ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ</th>
                 </tr>
               </thead>
               <tbody className="text-xs divide-y divide-gray-100">
@@ -744,9 +745,9 @@ function PatientsView() {
                   <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="p-4 font-bold text-gray-800">{p.full_name}</td>
                     <td className="p-4 font-mono text-gray-600">{p.national_id}</td>
-                    <td className="p-4">{p.age} سنة</td>
+                    <td className="p-4">{p.age} ط³ظ†ط©</td>
                     <td className="p-4">
-                      <Badge className={p.gender === "ذكر" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-pink-50 text-pink-700 border-pink-100"}>
+                      <Badge className={p.gender === "ط°ظƒط±" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-pink-50 text-pink-700 border-pink-100"}>
                         {p.gender}
                       </Badge>
                     </td>
@@ -754,13 +755,13 @@ function PatientsView() {
                     <td className="p-4 text-gray-400">
                       {new Date(p.first_visit_date).toLocaleDateString("ar-EG")}
                     </td>
-                    <td className="p-4 text-gray-600 font-mono">{p.phone || "—"}</td>
+                    <td className="p-4 text-gray-600 font-mono">{p.phone || "â€”"}</td>
                   </tr>
                 ))}
                 {patients.length === 0 && (
                   <tr>
                     <td colSpan={7} className="text-center py-10 text-gray-400">
-                      لا يوجد مرضى مسجلين حالياً.
+                      ظ„ط§ ظٹظˆط¬ط¯ ظ…ط±ط¶ظ‰ ظ…ط³ط¬ظ„ظٹظ† ط­ط§ظ„ظٹط§ظ‹.
                     </td>
                   </tr>
                 )}
@@ -773,9 +774,9 @@ function PatientsView() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // DAILY VISITS LOG LIST
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 function VisitsLog({ profile }: { profile: UserProfile }) {
   const [visits, setVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -826,7 +827,7 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
       const data = await resilientFetch<any[]>(url);
       setVisits(data);
     } catch (err: any) {
-      toast.error("فشل تحميل سجل الزيارات", { description: err.message });
+      toast.error("ظپط´ظ„ طھط­ظ…ظٹظ„ ط³ط¬ظ„ ط§ظ„ط²ظٹط§ط±ط§طھ", { description: err.message });
     } finally {
       setLoading(false);
     }
@@ -838,32 +839,32 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
 
   const handleExportExcel = () => {
     if (visits.length === 0) {
-      toast.error("لا يوجد بيانات لتصديرها");
+      toast.error("ظ„ط§ ظٹظˆط¬ط¯ ط¨ظٹط§ظ†ط§طھ ظ„طھطµط¯ظٹط±ظ‡ط§");
       return;
     }
 
     const dataToExport = visits.map(v => ({
-      "اسم المريض": v.patients?.full_name,
-      "الرقم القومي": v.patients?.national_id,
-      "رقم الهاتف": v.patients?.phone || "",
-      "الإدارة الصحية": departments.find(d => d.id === v.health_units?.department_id)?.name || (selectedDept && selectedDept !== "all" ? departments.find(d => d.id === selectedDept)?.name : ""),
-      "الوحدة الصحية": v.health_units?.name,
-      "نوع الزيارة": v.visit_type,
-      "تاريخ الزيارة": new Date(v.visit_date).toLocaleDateString("ar-EG"),
-      "وقت الزيارة": new Date(v.visit_date).toLocaleTimeString("ar-EG", { hour: '2-digit', minute: '2-digit' }),
-      "الضغط الانقباضي": v.systolic || "",
-      "الضغط الانبساطي": v.diastolic || "",
-      "نوع السكر": v.sugar_type || "",
-      "مستوى السكر": v.sugar_level || "",
-      "تراكمي HbA1c": v.hba1c || "",
-      "الطول": v.height || "",
-      "الوزن": v.weight || "",
-      "الإحالة": v.referred ? `محول إلى ${v.referral_dest || "مستشفى"}` : "لا يوجد",
+      "ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶": v.patients?.full_name,
+      "ط§ظ„ط±ظ‚ظ… ط§ظ„ظ‚ظˆظ…ظٹ": v.patients?.national_id,
+      "ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ": v.patients?.phone || "",
+      "ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©": departments.find(d => d.id === v.health_units?.department_id)?.name || (selectedDept && selectedDept !== "all" ? departments.find(d => d.id === selectedDept)?.name : ""),
+      "ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط©": v.health_units?.name,
+      "ظ†ظˆط¹ ط§ظ„ط²ظٹط§ط±ط©": v.visit_type,
+      "طھط§ط±ظٹط® ط§ظ„ط²ظٹط§ط±ط©": new Date(v.visit_date).toLocaleDateString("ar-EG"),
+      "ظˆظ‚طھ ط§ظ„ط²ظٹط§ط±ط©": new Date(v.visit_date).toLocaleTimeString("ar-EG", { hour: '2-digit', minute: '2-digit' }),
+      "ط§ظ„ط¶ط؛ط· ط§ظ„ط§ظ†ظ‚ط¨ط§ط¶ظٹ": v.systolic || "",
+      "ط§ظ„ط¶ط؛ط· ط§ظ„ط§ظ†ط¨ط³ط§ط·ظٹ": v.diastolic || "",
+      "ظ†ظˆط¹ ط§ظ„ط³ظƒط±": v.sugar_type || "",
+      "ظ…ط³طھظˆظ‰ ط§ظ„ط³ظƒط±": v.sugar_level || "",
+      "طھط±ط§ظƒظ…ظٹ HbA1c": v.hba1c || "",
+      "ط§ظ„ط·ظˆظ„": v.height || "",
+      "ط§ظ„ظˆط²ظ†": v.weight || "",
+      "ط§ظ„ط¥ط­ط§ظ„ط©": v.referred ? `ظ…ط­ظˆظ„ ط¥ظ„ظ‰ ${v.referral_dest || "ظ…ط³طھط´ظپظ‰"}` : "ظ„ط§ ظٹظˆط¬ط¯",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "الزيارات");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "ط§ظ„ط²ظٹط§ط±ط§طھ");
     XLSX.writeFile(workbook, "Visits_History.xlsx");
   };
 
@@ -875,7 +876,7 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="ابحث بالمريض أو الرقم القومي..."
+              placeholder="ط§ط¨ط­ط« ط¨ط§ظ„ظ…ط±ظٹط¶ ط£ظˆ ط§ظ„ط±ظ‚ظ… ط§ظ„ظ‚ظˆظ…ظٹ..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="h-10 text-xs pr-10 border-gray-200 focus:border-emerald-500 bg-white w-full"
@@ -883,10 +884,10 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
           </div>
           <Select value={selectedDept} onValueChange={setSelectedDept}>
             <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
-              <SelectValue placeholder="تصفية بالإدارة الصحية" />
+              <SelectValue placeholder="طھطµظپظٹط© ط¨ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="text-xs">كل الإدارات</SelectItem>
+              <SelectItem value="all" className="text-xs">ظƒظ„ ط§ظ„ط¥ط¯ط§ط±ط§طھ</SelectItem>
               {departments.map(d => (
                 <SelectItem key={d.id} value={d.id} className="text-xs">
                   {d.name}
@@ -896,10 +897,10 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
           </Select>
           <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedDept || selectedDept === "all"}>
             <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
-              <SelectValue placeholder="تصفية بالوحدة الصحية" />
+              <SelectValue placeholder="طھطµظپظٹط© ط¨ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط©" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="text-xs">كل الوحدات</SelectItem>
+              <SelectItem value="all" className="text-xs">ظƒظ„ ط§ظ„ظˆط­ط¯ط§طھ</SelectItem>
               {units.map(u => (
                 <SelectItem key={u.id} value={u.id} className="text-xs">
                   {u.name}
@@ -909,9 +910,9 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
           </Select>
           <div className="flex gap-2">
             <Button onClick={loadVisits} className="bg-emerald-600 hover:bg-emerald-700 h-10 px-4 flex-1 text-xs">
-              تصفية
+              طھطµظپظٹط©
             </Button>
-            <Button onClick={handleExportExcel} variant="outline" className="h-10 px-3 border-emerald-200 text-emerald-700 hover:bg-emerald-50" title="تصدير للإكسيل">
+            <Button onClick={handleExportExcel} variant="outline" className="h-10 px-3 border-emerald-200 text-emerald-700 hover:bg-emerald-50" title="طھطµط¯ظٹط± ظ„ظ„ط¥ظƒط³ظٹظ„">
               <Download className="w-4 h-4" />
             </Button>
           </div>
@@ -921,7 +922,7 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
       {loading ? (
         <div className="flex flex-col items-center py-20 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          <p className="text-xs text-gray-400">جاري تحميل سجل الزيارات...</p>
+          <p className="text-xs text-gray-400">ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط³ط¬ظ„ ط§ظ„ط²ظٹط§ط±ط§طھ...</p>
         </div>
       ) : (
         <Card className="border-0 shadow-md bg-white overflow-hidden">
@@ -929,14 +930,14 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
             <table className="w-full text-right border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-gray-100 text-xs font-bold text-gray-500">
-                  <th className="p-4">المريض</th>
-                  <th className="p-4">الوحدة الصحية</th>
-                  <th className="p-4">نوع الزيارة</th>
-                  <th className="p-4">التاريخ</th>
-                  <th className="p-4">الضغط (BP)</th>
-                  <th className="p-4">السكر</th>
-                  <th className="p-4">الإحالة</th>
-                  <th className="p-4 text-center">القياسات</th>
+                  <th className="p-4">ط§ظ„ظ…ط±ظٹط¶</th>
+                  <th className="p-4">ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط©</th>
+                  <th className="p-4">ظ†ظˆط¹ ط§ظ„ط²ظٹط§ط±ط©</th>
+                  <th className="p-4">ط§ظ„طھط§ط±ظٹط®</th>
+                  <th className="p-4">ط§ظ„ط¶ط؛ط· (BP)</th>
+                  <th className="p-4">ط§ظ„ط³ظƒط±</th>
+                  <th className="p-4">ط§ظ„ط¥ط­ط§ظ„ط©</th>
+                  <th className="p-4 text-center">ط§ظ„ظ‚ظٹط§ط³ط§طھ</th>
                 </tr>
               </thead>
               <tbody className="text-xs divide-y divide-gray-100">
@@ -951,7 +952,7 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
                       <p className="text-[10px] text-gray-400 font-mono mt-0.5">{v.health_units?.code}</p>
                     </td>
                     <td className="p-4">
-                      <Badge className={v.visit_type === "أول مرة" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-indigo-50 text-indigo-700 border-indigo-100"}>
+                      <Badge className={v.visit_type === "ط£ظˆظ„ ظ…ط±ط©" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-indigo-50 text-indigo-700 border-indigo-100"}>
                         {v.visit_type}
                       </Badge>
                     </td>
@@ -959,18 +960,18 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
                       {new Date(v.visit_date).toLocaleDateString("ar-EG")} {new Date(v.visit_date).toLocaleTimeString("ar-EG", { hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td className="p-4 font-mono font-semibold text-gray-700">
-                      {v.systolic && v.diastolic ? `${v.systolic}/${v.diastolic}` : "—"}
+                      {v.systolic && v.diastolic ? `${v.systolic}/${v.diastolic}` : "â€”"}
                     </td>
                     <td className="p-4 text-gray-700">
-                      {v.sugar_level ? `${v.sugar_level} (${v.sugar_type})` : "—"}
+                      {v.sugar_level ? `${v.sugar_level} (${v.sugar_type})` : "â€”"}
                     </td>
                     <td className="p-4">
                       {v.referred ? (
                         <Badge className="bg-amber-50 text-amber-700 border-amber-100">
-                          محول إلى {v.referral_dest || "مستشفى"}
+                          ظ…ط­ظˆظ„ ط¥ظ„ظ‰ {v.referral_dest || "ظ…ط³طھط´ظپظ‰"}
                         </Badge>
                       ) : (
-                        <span className="text-gray-400">لا يوجد</span>
+                        <span className="text-gray-400">ظ„ط§ ظٹظˆط¬ط¯</span>
                       )}
                     </td>
                     <td className="p-4 text-center">
@@ -979,7 +980,7 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
                         variant="outline"
                         className="text-[10px] px-2 h-7 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                       >
-                        عرض القياسات
+                        ط¹ط±ط¶ ط§ظ„ظ‚ظٹط§ط³ط§طھ
                       </Button>
                     </td>
                   </tr>
@@ -987,7 +988,7 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
                 {visits.length === 0 && (
                   <tr>
                     <td colSpan={8} className="text-center py-10 text-gray-400">
-                      لا توجد زيارات مسجلة حالياً.
+                      ظ„ط§ طھظˆط¬ط¯ ط²ظٹط§ط±ط§طھ ظ…ط³ط¬ظ„ط© ط­ط§ظ„ظٹط§ظ‹.
                     </td>
                   </tr>
                 )}
@@ -1004,7 +1005,7 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
             <CardHeader className="bg-emerald-800 text-white flex flex-row items-center justify-between p-5">
               <div>
                 <CardTitle className="text-base font-bold">{selectedVisit.patients?.full_name}</CardTitle>
-                <p className="text-[10px] text-emerald-200 mt-1 font-mono">الرقم القومي: {selectedVisit.patients?.national_id}</p>
+                <p className="text-[10px] text-emerald-200 mt-1 font-mono">ط§ظ„ط±ظ‚ظ… ط§ظ„ظ‚ظˆظ…ظٹ: {selectedVisit.patients?.national_id}</p>
               </div>
               <button onClick={() => setSelectedVisit(null)} className="p-1.5 bg-white/10 rounded-full hover:bg-white/20 transition-all text-white">
                 <X className="w-4 h-4" />
@@ -1012,26 +1013,26 @@ function VisitsLog({ profile }: { profile: UserProfile }) {
             </CardHeader>
             <CardContent className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
-                <MeasurementBox label="الطول" value={selectedVisit.height} suffix="سم" icon={<Ruler className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="الوزن" value={selectedVisit.weight} suffix="كجم" icon={<Weight className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="الضغط الانقباضي" value={selectedVisit.systolic} suffix="mmHg" icon={<Activity className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="الضغط الانبساطي" value={selectedVisit.diastolic} suffix="mmHg" icon={<Activity className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="مستوى السكر" value={selectedVisit.sugar_level} suffix={`mg/dL (${selectedVisit.sugar_type || ""})`} icon={<Droplets className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="تراكمي HbA1c" value={selectedVisit.hba1c} suffix="%" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="الكوليسترول" value={selectedVisit.cholesterol} suffix="mg/dL" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="الدهون الثلاثية" value={selectedVisit.triglycerides} suffix="mg/dL" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ط§ظ„ط·ظˆظ„" value={selectedVisit.height} suffix="ط³ظ…" icon={<Ruler className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ط§ظ„ظˆط²ظ†" value={selectedVisit.weight} suffix="ظƒط¬ظ…" icon={<Weight className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ط§ظ„ط¶ط؛ط· ط§ظ„ط§ظ†ظ‚ط¨ط§ط¶ظٹ" value={selectedVisit.systolic} suffix="mmHg" icon={<Activity className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ط§ظ„ط¶ط؛ط· ط§ظ„ط§ظ†ط¨ط³ط§ط·ظٹ" value={selectedVisit.diastolic} suffix="mmHg" icon={<Activity className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ظ…ط³طھظˆظ‰ ط§ظ„ط³ظƒط±" value={selectedVisit.sugar_level} suffix={`mg/dL (${selectedVisit.sugar_type || ""})`} icon={<Droplets className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="طھط±ط§ظƒظ…ظٹ HbA1c" value={selectedVisit.hba1c} suffix="%" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ط§ظ„ظƒظˆظ„ظٹط³طھط±ظˆظ„" value={selectedVisit.cholesterol} suffix="mg/dL" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ط§ظ„ط¯ظ‡ظˆظ† ط§ظ„ط«ظ„ط§ط«ظٹط©" value={selectedVisit.triglycerides} suffix="mg/dL" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
                 <MeasurementBox label="LDL" value={selectedVisit.ldl} suffix="mg/dL" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
                 <MeasurementBox label="HDL" value={selectedVisit.hdl} suffix="mg/dL" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="الكيرياتينين" value={selectedVisit.creatinine} suffix="mg/dL" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
-                <MeasurementBox label="معدل الترشيح eGFR" value={selectedVisit.egfr} suffix="mL/min" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ط§ظ„ظƒظٹط±ظٹط§طھظٹظ†ظٹظ†" value={selectedVisit.creatinine} suffix="mg/dL" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
+                <MeasurementBox label="ظ…ط¹ط¯ظ„ ط§ظ„طھط±ط´ظٹط­ eGFR" value={selectedVisit.egfr} suffix="mL/min" icon={<FlaskConical className="w-4 h-4 text-emerald-600" />} />
               </div>
 
               {selectedVisit.referred && (
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex gap-2.5 items-start">
                   <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[11px] font-bold text-amber-800">بيانات الإحالة</p>
-                    <p className="text-xs text-amber-700 mt-0.5">تم تحويل المريض إلى: {selectedVisit.referral_dest || "مستشفى سوهاج العام"}</p>
+                    <p className="text-[11px] font-bold text-amber-800">ط¨ظٹط§ظ†ط§طھ ط§ظ„ط¥ط­ط§ظ„ط©</p>
+                    <p className="text-xs text-amber-700 mt-0.5">طھظ… طھط­ظˆظٹظ„ ط§ظ„ظ…ط±ظٹط¶ ط¥ظ„ظ‰: {selectedVisit.referral_dest || "ظ…ط³طھط´ظپظ‰ ط³ظˆظ‡ط§ط¬ ط§ظ„ط¹ط§ظ…"}</p>
                   </div>
                 </div>
               )}
@@ -1052,16 +1053,16 @@ function MeasurementBox({ label, value, suffix, icon }: { label: string; value: 
       <div>
         <p className="text-[10px] text-gray-500 font-semibold">{label}</p>
         <p className="text-xs font-bold text-gray-800 mt-0.5">
-          {value !== null && value !== undefined && value !== "" ? `${value} ${suffix}` : "—"}
+          {value !== null && value !== undefined && value !== "" ? `${value} ${suffix}` : "â€”"}
         </p>
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // DEPARTMENTS & UNITS VIEW (Supervisor only)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
   const [tab, setTab] = useState<"departments" | "units">("units");
   const [departments, setDepartments] = useState<any[]>([]);
@@ -1088,7 +1089,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
       const unts = await resilientFetch<any[]>("/api/units?includeInactive=true");
       setUnits(unts);
     } catch (err: any) {
-      toast.error("فشل تحميل البيانات", { description: err.message });
+      toast.error("ظپط´ظ„ طھط­ظ…ظٹظ„ ط§ظ„ط¨ظٹط§ظ†ط§طھ", { description: err.message });
     } finally {
       setLoading(false);
     }
@@ -1105,7 +1106,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
   }, [profile]);
 
   const handleAddDept = async () => {
-    if (!deptName) { toast.error("يرجى إدخال اسم الإدارة الصحية"); return; }
+    if (!deptName) { toast.error("ظٹط±ط¬ظ‰ ط¥ط¯ط®ط§ظ„ ط§ط³ظ… ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©"); return; }
     try {
       const res = await fetch("/api/departments", {
         method: "POST",
@@ -1113,19 +1114,19 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
         body: JSON.stringify({ name: deptName }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل إضافة الإدارة");
-      toast.success("تم إضافة الإدارة الصحية بنجاح");
+      if (!res.ok) throw new Error(data.error || "ظپط´ظ„ ط¥ط¶ط§ظپط© ط§ظ„ط¥ط¯ط§ط±ط©");
+      toast.success("طھظ… ط¥ط¶ط§ظپط© ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط© ط¨ظ†ط¬ط§ط­");
       setDeptName("");
       setIsDeptModalOpen(false);
       loadData();
     } catch (err: any) {
-      toast.error("فشل الإضافة", { description: err.message });
+      toast.error("ظپط´ظ„ ط§ظ„ط¥ط¶ط§ظپط©", { description: err.message });
     }
   };
 
   const handleAddUnit = async () => {
     if (!unitCode || !unitName || !unitDept) {
-      toast.error("يرجى ملء جميع الحقول الإلزامية");
+      toast.error("ظٹط±ط¬ظ‰ ظ…ظ„ط، ط¬ظ…ظٹط¹ ط§ظ„ط­ظ‚ظˆظ„ ط§ظ„ط¥ظ„ط²ط§ظ…ظٹط©");
       return;
     }
     try {
@@ -1141,8 +1142,8 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل إضافة الوحدة");
-      toast.success("تم إضافة الوحدة الصحية بنجاح");
+      if (!res.ok) throw new Error(data.error || "ظپط´ظ„ ط¥ط¶ط§ظپط© ط§ظ„ظˆط­ط¯ط©");
+      toast.success("طھظ… ط¥ط¶ط§ظپط© ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط© ط¨ظ†ط¬ط§ط­");
       setUnitCode("");
       setUnitName("");
       setUnitDept("");
@@ -1151,7 +1152,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
       setIsUnitModalOpen(false);
       loadData();
     } catch (err: any) {
-      toast.error("فشل إضافة الوحدة", { description: err.message });
+      toast.error("ظپط´ظ„ ط¥ط¶ط§ظپط© ط§ظ„ظˆط­ط¯ط©", { description: err.message });
     }
   };
 
@@ -1163,11 +1164,11 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
         body: JSON.stringify({ id, active: !active }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل تعديل حالة الوحدة");
-      toast.success("تم تعديل حالة الوحدة بنجاح");
+      if (!res.ok) throw new Error(data.error || "ظپط´ظ„ طھط¹ط¯ظٹظ„ ط­ط§ظ„ط© ط§ظ„ظˆط­ط¯ط©");
+      toast.success("طھظ… طھط¹ط¯ظٹظ„ ط­ط§ظ„ط© ط§ظ„ظˆط­ط¯ط© ط¨ظ†ط¬ط§ط­");
       loadData();
     } catch (err: any) {
-      toast.error("فشل التعديل", { description: err.message });
+      toast.error("ظپط´ظ„ ط§ظ„طھط¹ط¯ظٹظ„", { description: err.message });
     }
   };
 
@@ -1182,7 +1183,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
               tab === "units" ? "bg-emerald-600 text-white" : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            الوحدات الصحية
+            ط§ظ„ظˆط­ط¯ط§طھ ط§ظ„طµط­ظٹط©
           </button>
           {profile.role !== "coordinator" && (
             <button
@@ -1191,7 +1192,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
                 tab === "departments" ? "bg-emerald-600 text-white" : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              الإدارات الصحية
+              ط§ظ„ط¥ط¯ط§ط±ط§طھ ط§ظ„طµط­ظٹط©
             </button>
           )}
         </div>
@@ -1200,12 +1201,12 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
           {tab === "departments" ? (
             <Button onClick={() => setIsDeptModalOpen(true)} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 flex-1 sm:flex-none">
               <Plus className="w-4 h-4" />
-              إضافة إدارة صحية
+              ط¥ط¶ط§ظپط© ط¥ط¯ط§ط±ط© طµط­ظٹط©
             </Button>
           ) : (
             <Button onClick={() => setIsUnitModalOpen(true)} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 flex-1 sm:flex-none">
               <Plus className="w-4 h-4" />
-              إضافة وحدة صحية
+              ط¥ط¶ط§ظپط© ظˆط­ط¯ط© طµط­ظٹط©
             </Button>
           )}
         </div>
@@ -1214,15 +1215,15 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
       {loading ? (
         <div className="flex flex-col items-center py-20 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          <p className="text-xs text-gray-400">جاري تحميل البيانات...</p>
+          <p className="text-xs text-gray-400">ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„ط¨ظٹط§ظ†ط§طھ...</p>
         </div>
       ) : tab === "departments" ? (
         <Card className="border-0 shadow-md bg-white overflow-hidden">
           <table className="w-full text-right border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-gray-100 text-xs font-bold text-gray-500">
-                <th className="p-4">اسم الإدارة الصحية</th>
-                <th className="p-4">تاريخ الإنشاء</th>
+                <th className="p-4">ط§ط³ظ… ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©</th>
+                <th className="p-4">طھط§ط±ظٹط® ط§ظ„ط¥ظ†ط´ط§ط،</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-gray-100">
@@ -1240,18 +1241,18 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
           <table className="w-full text-right border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-gray-100 text-xs font-bold text-gray-500">
-                <th className="p-4">كود الوحدة</th>
-                <th className="p-4">اسم الوحدة</th>
-                <th className="p-4">الإدارة الصحية</th>
-                <th className="p-4 text-center">الهدف اليومي</th>
-                <th className="p-4 text-center">الهدف الشهري</th>
-                <th className="p-4 text-center">الحالة</th>
-                <th className="p-4 text-center">الإجراءات</th>
+                <th className="p-4">ظƒظˆط¯ ط§ظ„ظˆط­ط¯ط©</th>
+                <th className="p-4">ط§ط³ظ… ط§ظ„ظˆط­ط¯ط©</th>
+                <th className="p-4">ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©</th>
+                <th className="p-4 text-center">ط§ظ„ظ‡ط¯ظپ ط§ظ„ظٹظˆظ…ظٹ</th>
+                <th className="p-4 text-center">ط§ظ„ظ‡ط¯ظپ ط§ظ„ط´ظ‡ط±ظٹ</th>
+                <th className="p-4 text-center">ط§ظ„ط­ط§ظ„ط©</th>
+                <th className="p-4 text-center">ط§ظ„ط¥ط¬ط±ط§ط،ط§طھ</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-gray-100">
               {units.map(u => {
-                const deptName = departments.find(d => d.id === u.department_id)?.name || "—";
+                const deptName = departments.find(d => d.id === u.department_id)?.name || "â€”";
                 return (
                   <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="p-4 font-mono font-bold text-gray-600">{u.code}</td>
@@ -1261,7 +1262,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
                     <td className="p-4 text-center font-semibold text-gray-700">{u.monthly_target}</td>
                     <td className="p-4 text-center">
                       <Badge className={u.active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"}>
-                        {u.active ? "نشطة" : "غير نشطة"}
+                        {u.active ? "ظ†ط´ط·ط©" : "ط؛ظٹط± ظ†ط´ط·ط©"}
                       </Badge>
                     </td>
                     <td className="p-4 text-center">
@@ -1277,12 +1278,12 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
                         {u.active ? (
                           <>
                             <UserX className="w-3.5 h-3.5" />
-                            تعطيل
+                            طھط¹ط·ظٹظ„
                           </>
                         ) : (
                           <>
                             <UserCheck className="w-3.5 h-3.5" />
-                            تفعيل
+                            طھظپط¹ظٹظ„
                           </>
                         )}
                       </Button>
@@ -1300,16 +1301,16 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
           <Card className="w-full max-w-sm border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <CardHeader className="bg-emerald-800 text-white flex flex-row items-center justify-between p-4">
-              <CardTitle className="text-sm font-bold">إضافة إدارة صحية جديدة</CardTitle>
+              <CardTitle className="text-sm font-bold">ط¥ط¶ط§ظپط© ط¥ط¯ط§ط±ط© طµط­ظٹط© ط¬ط¯ظٹط¯ط©</CardTitle>
               <button onClick={() => setIsDeptModalOpen(false)} className="p-1 rounded-full hover:bg-white/10 text-white">
                 <X className="w-4 h-4" />
               </button>
             </CardHeader>
             <CardContent className="p-5 space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600 font-bold">اسم الإدارة الصحية *</Label>
+                <Label className="text-xs text-gray-600 font-bold">ط§ط³ظ… ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط© *</Label>
                 <Input
-                  placeholder="مثال: إدارة سوهاج الصحية"
+                  placeholder="ظ…ط«ط§ظ„: ط¥ط¯ط§ط±ط© ط³ظˆظ‡ط§ط¬ ط§ظ„طµط­ظٹط©"
                   value={deptName}
                   onChange={e => setDeptName(e.target.value)}
                   className="h-10 text-xs border-gray-200 focus:border-emerald-500"
@@ -1317,10 +1318,10 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
               </div>
               <div className="flex gap-2 pt-2">
                 <Button onClick={handleAddDept} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1">
-                  إضافة
+                  ط¥ط¶ط§ظپط©
                 </Button>
                 <Button onClick={() => setIsDeptModalOpen(false)} variant="outline" size="sm" className="flex-1">
-                  إلغاء
+                  ط¥ظ„ط؛ط§ط،
                 </Button>
               </div>
             </CardContent>
@@ -1333,7 +1334,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
           <Card className="w-full max-w-sm border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <CardHeader className="bg-emerald-800 text-white flex flex-row items-center justify-between p-4">
-              <CardTitle className="text-sm font-bold">إضافة وحدة صحية جديدة</CardTitle>
+              <CardTitle className="text-sm font-bold">ط¥ط¶ط§ظپط© ظˆط­ط¯ط© طµط­ظٹط© ط¬ط¯ظٹط¯ط©</CardTitle>
               <button onClick={() => setIsUnitModalOpen(false)} className="p-1 rounded-full hover:bg-white/10 text-white">
                 <X className="w-4 h-4" />
               </button>
@@ -1341,10 +1342,10 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
             <CardContent className="p-5 space-y-4">
               {profile.role !== "coordinator" && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 font-bold">الإدارة الصحية التابعة *</Label>
+                  <Label className="text-xs text-gray-600 font-bold">ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط© ط§ظ„طھط§ط¨ط¹ط© *</Label>
                   <Select value={unitDept} onValueChange={setUnitDept}>
                     <SelectTrigger className="h-10 text-xs bg-white border-gray-200">
-                      <SelectValue placeholder="اختر الإدارة الصحية" />
+                      <SelectValue placeholder="ط§ط®طھط± ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©" />
                     </SelectTrigger>
                     <SelectContent>
                       {departments.map(d => (
@@ -1358,9 +1359,9 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
               )}
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600 font-bold">كود الوحدة الصحية (فريد) *</Label>
+                <Label className="text-xs text-gray-600 font-bold">ظƒظˆط¯ ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط© (ظپط±ظٹط¯) *</Label>
                 <Input
-                  placeholder="مثال: SHG-025"
+                  placeholder="ظ…ط«ط§ظ„: SHG-025"
                   value={unitCode}
                   onChange={e => setUnitCode(e.target.value)}
                   className="h-10 text-xs border-gray-200 font-mono focus:border-emerald-500"
@@ -1369,9 +1370,9 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-gray-600 font-bold">اسم الوحدة الصحية *</Label>
+                <Label className="text-xs text-gray-600 font-bold">ط§ط³ظ… ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط© *</Label>
                 <Input
-                  placeholder="مثال: وحدة صحية روافع القصير"
+                  placeholder="ظ…ط«ط§ظ„: ظˆط­ط¯ط© طµط­ظٹط© ط±ظˆط§ظپط¹ ط§ظ„ظ‚طµظٹط±"
                   value={unitName}
                   onChange={e => setUnitName(e.target.value)}
                   className="h-10 text-xs border-gray-200 focus:border-emerald-500"
@@ -1380,7 +1381,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 font-bold">الهدف اليومي</Label>
+                  <Label className="text-xs text-gray-600 font-bold">ط§ظ„ظ‡ط¯ظپ ط§ظ„ظٹظˆظ…ظٹ</Label>
                   <Input
                     type="number"
                     placeholder="15"
@@ -1390,7 +1391,7 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-gray-600 font-bold">الهدف الشهري</Label>
+                  <Label className="text-xs text-gray-600 font-bold">ط§ظ„ظ‡ط¯ظپ ط§ظ„ط´ظ‡ط±ظٹ</Label>
                   <Input
                     type="number"
                     placeholder="300"
@@ -1403,10 +1404,10 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
 
               <div className="flex gap-2 pt-2">
                 <Button onClick={handleAddUnit} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1">
-                  إضافة
+                  ط¥ط¶ط§ظپط©
                 </Button>
                 <Button onClick={() => setIsUnitModalOpen(false)} variant="outline" size="sm" className="flex-1">
-                  إلغاء
+                  ط¥ظ„ط؛ط§ط،
                 </Button>
               </div>
             </CardContent>
@@ -1417,9 +1418,9 @@ function DepartmentsUnitsView({ profile }: { profile: UserProfile }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // USERS MANAGEMENT VIEW (General Initiative Coordinator only)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 function UsersView() {
   const [users, setUsers] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -1477,7 +1478,7 @@ function UsersView() {
       const unts = await resilientFetch<any[]>("/api/units");
       setUnits(unts);
     } catch (err: any) {
-      toast.error("فشل تحميل قائمة المستخدمين", { description: err.message });
+      toast.error("ظپط´ظ„ طھط­ظ…ظٹظ„ ظ‚ط§ط¦ظ…ط© ط§ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†", { description: err.message });
     } finally {
       setLoading(false);
       setSelectedUsers(new Set());
@@ -1530,7 +1531,7 @@ function UsersView() {
 
   const handleAddUser = async () => {
     if (!fullName || !username || !email || !password || !role) {
-      toast.error("يرجى ملء جميع الحقول المطلوبة");
+      toast.error("ظٹط±ط¬ظ‰ ظ…ظ„ط، ط¬ظ…ظٹط¹ ط§ظ„ط­ظ‚ظˆظ„ ط§ظ„ظ…ط·ظ„ظˆط¨ط©");
       return;
     }
     try {
@@ -1544,13 +1545,13 @@ function UsersView() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل إضافة حساب المستخدم");
-      toast.success("تم إنشاء حساب المستخدم بنجاح");
+      if (!res.ok) throw new Error(data.error || "ظپط´ظ„ ط¥ط¶ط§ظپط© ط­ط³ط§ط¨ ط§ظ„ظ…ط³طھط®ط¯ظ…");
+      toast.success("طھظ… ط¥ظ†ط´ط§ط، ط­ط³ط§ط¨ ط§ظ„ظ…ط³طھط®ط¯ظ… ط¨ظ†ط¬ط§ط­");
       resetAddForm();
       setIsAddUserOpen(false);
       loadData();
     } catch (err: any) {
-      toast.error("فشل الإنشاء", { description: err.message });
+      toast.error("ظپط´ظ„ ط§ظ„ط¥ظ†ط´ط§ط،", { description: err.message });
     }
   };
 
@@ -1588,12 +1589,12 @@ function UsersView() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل تعديل بيانات المستخدم");
-      toast.success("تم تحديث بيانات المستخدم بنجاح");
+      if (!res.ok) throw new Error(data.error || "ظپط´ظ„ طھط¹ط¯ظٹظ„ ط¨ظٹط§ظ†ط§طھ ط§ظ„ظ…ط³طھط®ط¯ظ…");
+      toast.success("طھظ… طھط­ط¯ظٹط« ط¨ظٹط§ظ†ط§طھ ط§ظ„ظ…ط³طھط®ط¯ظ… ط¨ظ†ط¬ط§ط­");
       setEditingUser(null);
       loadData();
     } catch (err: any) {
-      toast.error("فشل التحديث", { description: err.message });
+      toast.error("ظپط´ظ„ ط§ظ„طھط­ط¯ظٹط«", { description: err.message });
     } finally {
       setEditLoading(false);
     }
@@ -1609,13 +1610,13 @@ function UsersView() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(`تم إعادة تعيين كلمة مرور ${userName}`, {
-        description: `كلمة المرور المؤقتة: ${tempPass}`,
+      toast.success(`طھظ… ط¥ط¹ط§ط¯ط© طھط¹ظٹظٹظ† ظƒظ„ظ…ط© ظ…ط±ظˆط± ${userName}`, {
+        description: `ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ظ…ط¤ظ‚طھط©: ${tempPass}`,
         duration: 15000,
       });
       loadData();
     } catch (err: any) {
-      toast.error("فشل إعادة تعيين كلمة المرور", { description: err.message });
+      toast.error("ظپط´ظ„ ط¥ط¹ط§ط¯ط© طھط¹ظٹظٹظ† ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±", { description: err.message });
     }
   };
 
@@ -1625,12 +1626,12 @@ function UsersView() {
     try {
       const res = await fetch(`/api/users?id=${deletingUser.id}`, { method: "DELETE" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل حذف الحساب");
-      toast.success(`تم حذف حساب ${deletingUser.full_name} نهائياً`);
+      if (!res.ok) throw new Error(data.error || "ظپط´ظ„ ط­ط°ظپ ط§ظ„ط­ط³ط§ط¨");
+      toast.success(`طھظ… ط­ط°ظپ ط­ط³ط§ط¨ ${deletingUser.full_name} ظ†ظ‡ط§ط¦ظٹط§ظ‹`);
       setDeletingUser(null);
       loadData();
     } catch (err: any) {
-      toast.error("فشل الحذف", { description: err.message });
+      toast.error("ظپط´ظ„ ط§ظ„ط­ط°ظپ", { description: err.message });
     } finally {
       setDeleteLoading(false);
     }
@@ -1644,11 +1645,11 @@ function UsersView() {
         body: JSON.stringify({ id, active: !active }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "فشل تعديل حالة الحساب");
-      toast.success("تم تحديث حالة المستخدم بنجاح");
+      if (!res.ok) throw new Error(data.error || "ظپط´ظ„ طھط¹ط¯ظٹظ„ ط­ط§ظ„ط© ط§ظ„ط­ط³ط§ط¨");
+      toast.success("طھظ… طھط­ط¯ظٹط« ط­ط§ظ„ط© ط§ظ„ظ…ط³طھط®ط¯ظ… ط¨ظ†ط¬ط§ط­");
       loadData();
     } catch (err: any) {
-      toast.error("فشل التحديث", { description: err.message });
+      toast.error("ظپط´ظ„ ط§ظ„طھط­ط¯ظٹط«", { description: err.message });
     }
   };
 
@@ -1666,12 +1667,12 @@ function UsersView() {
       if (!res.ok) throw new Error(data.error);
       
       toast.success(data.message, {
-        description: data.tempPassword ? `كلمة المرور المؤقتة: ${data.tempPassword}` : undefined,
+        description: data.tempPassword ? `ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ظ…ط¤ظ‚طھط©: ${data.tempPassword}` : undefined,
         duration: data.tempPassword ? 15000 : 4000,
       });
       loadData();
     } catch (err: any) {
-      toast.error("فشل الإجراء المجمع", { description: err.message });
+      toast.error("ظپط´ظ„ ط§ظ„ط¥ط¬ط±ط§ط، ط§ظ„ظ…ط¬ظ…ط¹", { description: err.message });
     } finally {
       setBulkLoading(false);
     }
@@ -1679,21 +1680,21 @@ function UsersView() {
 
   const exportToExcel = () => {
     const data = filteredUsers.map(u => ({
-      "الاسم بالكامل": u.full_name,
-      "اسم المستخدم": u.username || "",
-      "البريد الإلكتروني": u.email,
-      "رقم الهاتف": u.phone || "",
-      "الصلاحية": u.role === "supervisor" ? "منسق عام" : u.role === "coordinator" ? "منسق إدارة" : "ممرض / ممرضة",
-      "الإدارة الصحية": u.departments?.name || "",
-      "الوحدة الصحية": u.health_units?.name || "",
-      "حالة الحساب": u.active ? "نشط" : "معطل",
-      "حالة كلمة المرور": u.must_change_password ? "مؤقتة" : "تم التغيير",
-      "آخر تسجيل دخول": u.last_login ? new Date(u.last_login).toLocaleString("ar-EG") : "لم يسجل دخول",
-      "تاريخ الإنشاء": new Date(u.created_at).toLocaleString("ar-EG")
+      "ط§ظ„ط§ط³ظ… ط¨ط§ظ„ظƒط§ظ…ظ„": u.full_name,
+      "ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ…": u.username || "",
+      "ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ": u.email,
+      "ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ": u.phone || "",
+      "ط§ظ„طµظ„ط§ط­ظٹط©": u.role === "supervisor" ? "ظ…ظ†ط³ظ‚ ط¹ط§ظ…" : u.role === "coordinator" ? "ظ…ظ†ط³ظ‚ ط¥ط¯ط§ط±ط©" : "ظ…ظ…ط±ط¶ / ظ…ظ…ط±ط¶ط©",
+      "ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©": u.departments?.name || "",
+      "ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط©": u.health_units?.name || "",
+      "ط­ط§ظ„ط© ط§ظ„ط­ط³ط§ط¨": u.active ? "ظ†ط´ط·" : "ظ…ط¹ط·ظ„",
+      "ط­ط§ظ„ط© ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±": u.must_change_password ? "ظ…ط¤ظ‚طھط©" : "طھظ… ط§ظ„طھط؛ظٹظٹط±",
+      "ط¢ط®ط± طھط³ط¬ظٹظ„ ط¯ط®ظˆظ„": u.last_login ? new Date(u.last_login).toLocaleString("ar-EG") : "ظ„ظ… ظٹط³ط¬ظ„ ط¯ط®ظˆظ„",
+      "طھط§ط±ظٹط® ط§ظ„ط¥ظ†ط´ط§ط،": new Date(u.created_at).toLocaleString("ar-EG")
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "المستخدمين");
+    XLSX.utils.book_append_sheet(wb, ws, "ط§ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†");
     XLSX.writeFile(wb, "users_export.xlsx");
   };
 
@@ -1708,7 +1709,7 @@ function UsersView() {
       if (!res.ok) throw new Error(data.error);
       setActivityData(data);
     } catch (err: any) {
-      toast.error("فشل تحميل سجل النشاط", { description: err.message });
+      toast.error("ظپط´ظ„ طھط­ظ…ظٹظ„ ط³ط¬ظ„ ط§ظ„ظ†ط´ط§ط·", { description: err.message });
       setActivityUser(null);
     } finally {
       setActivityLoading(false);
@@ -1732,52 +1733,52 @@ function UsersView() {
 
   return (
     <div className="space-y-4">
-      {/* ── Statistics Cards ── */}
+      {/* â”€â”€ Statistics Cards â”€â”€ */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
           <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
             <Users className="w-6 h-6 text-emerald-600 mb-1" />
             <p className="text-2xl font-black text-gray-800">{totalUsers}</p>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">إجمالي المستخدمين</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†</p>
           </CardContent>
         </Card>
         <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
           <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
             <CheckCircle2 className="w-6 h-6 text-green-500 mb-1" />
             <p className="text-2xl font-black text-gray-800">{activeUsers}</p>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">حسابات نشطة</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">ط­ط³ط§ط¨ط§طھ ظ†ط´ط·ط©</p>
           </CardContent>
         </Card>
         <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
           <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
             <XCircle className="w-6 h-6 text-red-500 mb-1" />
             <p className="text-2xl font-black text-gray-800">{inactiveUsers}</p>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">حسابات معطلة</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">ط­ط³ط§ط¨ط§طھ ظ…ط¹ط·ظ„ط©</p>
           </CardContent>
         </Card>
         <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
           <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
             <Activity className="w-6 h-6 text-blue-500 mb-1" />
             <p className="text-2xl font-black text-gray-800">{nursesCount}</p>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">تمريض</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">طھظ…ط±ظٹط¶</p>
           </CardContent>
         </Card>
         <Card className="bg-white border-0 shadow-sm rounded-2xl overflow-hidden">
           <CardContent className="p-4 flex flex-col items-center text-center space-y-1">
             <Shield className="w-6 h-6 text-amber-500 mb-1" />
             <p className="text-2xl font-black text-gray-800">{coordinatorsCount}</p>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">منسقي الإدارات</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">ظ…ظ†ط³ظ‚ظٹ ط§ظ„ط¥ط¯ط§ط±ط§طھ</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* ── Filters & Actions Bar ── */}
+      {/* â”€â”€ Filters & Actions Bar â”€â”€ */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <div className="flex-1 relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="بحث بالاسم، اسم المستخدم، البريد، الإدارة..."
+              placeholder="ط¨ط­ط« ط¨ط§ظ„ط§ط³ظ…طŒ ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ…طŒ ط§ظ„ط¨ط±ظٹط¯طŒ ط§ظ„ط¥ط¯ط§ط±ط©..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="h-10 text-xs pr-10 border-gray-200 focus:border-emerald-500 bg-slate-50"
@@ -1786,21 +1787,21 @@ function UsersView() {
           <div className="flex flex-wrap gap-2">
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="h-10 text-xs w-32 bg-slate-50 border-gray-200">
-                <SelectValue placeholder="الصلاحية" />
+                <SelectValue placeholder="ط§ظ„طµظ„ط§ط­ظٹط©" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-xs">الكل</SelectItem>
-                <SelectItem value="nurse" className="text-xs">تمريض</SelectItem>
-                <SelectItem value="coordinator" className="text-xs">منسق إدارة</SelectItem>
-                <SelectItem value="supervisor" className="text-xs">منسق عام</SelectItem>
+                <SelectItem value="all" className="text-xs">ط§ظ„ظƒظ„</SelectItem>
+                <SelectItem value="nurse" className="text-xs">طھظ…ط±ظٹط¶</SelectItem>
+                <SelectItem value="coordinator" className="text-xs">ظ…ظ†ط³ظ‚ ط¥ط¯ط§ط±ط©</SelectItem>
+                <SelectItem value="supervisor" className="text-xs">ظ…ظ†ط³ظ‚ ط¹ط§ظ…</SelectItem>
               </SelectContent>
             </Select>
             <Select value={deptFilter} onValueChange={setDeptFilter}>
               <SelectTrigger className="h-10 text-xs w-32 bg-slate-50 border-gray-200">
-                <SelectValue placeholder="الإدارة" />
+                <SelectValue placeholder="ط§ظ„ط¥ط¯ط§ط±ط©" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-xs">كل الإدارات</SelectItem>
+                <SelectItem value="all" className="text-xs">ظƒظ„ ط§ظ„ط¥ط¯ط§ط±ط§طھ</SelectItem>
                 {departments.map(d => (
                   <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>
                 ))}
@@ -1808,19 +1809,19 @@ function UsersView() {
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="h-10 text-xs w-32 bg-slate-50 border-gray-200">
-                <SelectValue placeholder="الحالة" />
+                <SelectValue placeholder="ط§ظ„ط­ط§ظ„ط©" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-xs">جميع الحالات</SelectItem>
-                <SelectItem value="active" className="text-xs">نشط</SelectItem>
-                <SelectItem value="inactive" className="text-xs">معطل</SelectItem>
+                <SelectItem value="all" className="text-xs">ط¬ظ…ظٹط¹ ط§ظ„ط­ط§ظ„ط§طھ</SelectItem>
+                <SelectItem value="active" className="text-xs">ظ†ط´ط·</SelectItem>
+                <SelectItem value="inactive" className="text-xs">ظ…ط¹ط·ظ„</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={exportToExcel} variant="outline" size="sm" className="h-10 text-xs gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50">
-              <Download className="w-4 h-4" /> تصدير Excel
+              <Download className="w-4 h-4" /> طھطµط¯ظٹط± Excel
             </Button>
             <Button onClick={() => { resetAddForm(); setIsAddUserOpen(true); }} size="sm" className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 px-4">
-              <Plus className="w-4 h-4" /> إضافة حساب
+              <Plus className="w-4 h-4" /> ط¥ط¶ط§ظپط© ط­ط³ط§ط¨
             </Button>
           </div>
         </div>
@@ -1829,28 +1830,28 @@ function UsersView() {
         {selectedUsers.size > 0 && (
           <div className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-xl animate-in fade-in slide-in-from-top-2">
             <span className="text-xs font-bold text-blue-800">
-              تم تحديد ({selectedUsers.size}) مستخدم
+              طھظ… طھط­ط¯ظٹط¯ ({selectedUsers.size}) ظ…ط³طھط®ط¯ظ…
             </span>
             <div className="flex gap-2">
               <Button onClick={() => handleBulkAction("activate")} disabled={bulkLoading} size="sm" variant="outline" className="h-8 text-xs bg-white border-green-200 text-green-700 hover:bg-green-50">
-                <CheckCircle2 className="w-3 h-3 ml-1" /> تفعيل
+                <CheckCircle2 className="w-3 h-3 ml-1" /> طھظپط¹ظٹظ„
               </Button>
               <Button onClick={() => handleBulkAction("deactivate")} disabled={bulkLoading} size="sm" variant="outline" className="h-8 text-xs bg-white border-red-200 text-red-700 hover:bg-red-50">
-                <XCircle className="w-3 h-3 ml-1" /> تعطيل
+                <XCircle className="w-3 h-3 ml-1" /> طھط¹ط·ظٹظ„
               </Button>
               <Button onClick={() => handleBulkAction("reset_password")} disabled={bulkLoading} size="sm" variant="outline" className="h-8 text-xs bg-white border-amber-200 text-amber-700 hover:bg-amber-50">
-                <RefreshCw className="w-3 h-3 ml-1" /> إعادة تعيين كلمة المرور
+                <RefreshCw className="w-3 h-3 ml-1" /> ط¥ط¹ط§ط¯ط© طھط¹ظٹظٹظ† ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±
               </Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Users Table ── */}
+      {/* â”€â”€ Users Table â”€â”€ */}
       {loading ? (
         <div className="flex flex-col items-center py-20 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          <p className="text-xs text-gray-400">جاري تحميل حسابات المستخدمين...</p>
+          <p className="text-xs text-gray-400">ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط­ط³ط§ط¨ط§طھ ط§ظ„ظ…ط³طھط®ط¯ظ…ظٹظ†...</p>
         </div>
       ) : (
         <Card className="border-0 shadow-md bg-white overflow-hidden">
@@ -1864,14 +1865,14 @@ function UsersView() {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="p-3">الاسم و البريد</th>
-                <th className="p-3">اسم المستخدم</th>
-                <th className="p-3">الصلاحية</th>
-                <th className="p-3">الجهة</th>
-                <th className="p-3 text-center">الحالة</th>
-                <th className="p-3 text-center">كلمة المرور</th>
-                <th className="p-3">آخر تسجيل دخول</th>
-                <th className="p-3 text-center">الإجراءات</th>
+                <th className="p-3">ط§ظ„ط§ط³ظ… ظˆ ط§ظ„ط¨ط±ظٹط¯</th>
+                <th className="p-3">ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ…</th>
+                <th className="p-3">ط§ظ„طµظ„ط§ط­ظٹط©</th>
+                <th className="p-3">ط§ظ„ط¬ظ‡ط©</th>
+                <th className="p-3 text-center">ط§ظ„ط­ط§ظ„ط©</th>
+                <th className="p-3 text-center">ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±</th>
+                <th className="p-3">ط¢ط®ط± طھط³ط¬ظٹظ„ ط¯ط®ظˆظ„</th>
+                <th className="p-3 text-center">ط§ظ„ط¥ط¬ط±ط§ط،ط§طھ</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-gray-100">
@@ -1887,10 +1888,10 @@ function UsersView() {
                     <p className="font-bold text-gray-800">{u.full_name}</p>
                     <p className="text-[10px] text-gray-400 font-mono mt-0.5">{u.email}</p>
                   </td>
-                  <td className="p-3 font-mono text-gray-600">{u.username || "—"}</td>
+                  <td className="p-3 font-mono text-gray-600">{u.username || "â€”"}</td>
                   <td className="p-3">
                     <Badge className={u.role === "supervisor" ? "bg-amber-50 text-amber-700 border-amber-100" : u.role === "coordinator" ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"}>
-                      {u.role === "supervisor" ? "منسق عام" : u.role === "coordinator" ? "منسق إدارة" : "تمريض"}
+                      {u.role === "supervisor" ? "ظ…ظ†ط³ظ‚ ط¹ط§ظ…" : u.role === "coordinator" ? "ظ…ظ†ط³ظ‚ ط¥ط¯ط§ط±ط©" : "طھظ…ط±ظٹط¶"}
                     </Badge>
                   </td>
                   <td className="p-3">
@@ -1899,31 +1900,31 @@ function UsersView() {
                     ) : u.departments?.name ? (
                       <span>{u.departments.name}</span>
                     ) : (
-                      <span className="text-gray-400">مديرية الصحة</span>
+                      <span className="text-gray-400">ظ…ط¯ظٹط±ظٹط© ط§ظ„طµط­ط©</span>
                     )}
                   </td>
                   <td className="p-3 text-center">
                     <Badge className={u.active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"}>
-                      {u.active ? "نشط" : "معطل"}
+                      {u.active ? "ظ†ط´ط·" : "ظ…ط¹ط·ظ„"}
                     </Badge>
                   </td>
                   <td className="p-3 text-center">
                     <Badge className={u.must_change_password ? "bg-amber-50 text-amber-700 border-amber-100" : "bg-gray-50 text-gray-600 border-gray-200"}>
-                      {u.must_change_password ? "مؤقتة" : "تم التغيير"}
+                      {u.must_change_password ? "ظ…ط¤ظ‚طھط©" : "طھظ… ط§ظ„طھط؛ظٹظٹط±"}
                     </Badge>
                   </td>
                   <td className="p-3 text-gray-500 font-mono text-[10px]">
-                    {u.last_login ? new Date(u.last_login).toLocaleString("ar-EG", { dateStyle: 'short', timeStyle: 'short' }) : "لم يسجل دخول"}
+                    {u.last_login ? new Date(u.last_login).toLocaleString("ar-EG", { dateStyle: 'short', timeStyle: 'short' }) : "ظ„ظ… ظٹط³ط¬ظ„ ط¯ط®ظˆظ„"}
                   </td>
                   <td className="p-3">
                     <div className="flex items-center justify-center gap-1 flex-wrap">
-                      <Button onClick={() => loadActivityLog(u)} variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50 rounded-full" title="سجل النشاط">
+                      <Button onClick={() => loadActivityLog(u)} variant="ghost" className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50 rounded-full" title="ط³ط¬ظ„ ط§ظ„ظ†ط´ط§ط·">
                         <FileText className="w-3.5 h-3.5" />
                       </Button>
-                      <Button onClick={() => openEditModal(u)} variant="ghost" className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50 rounded-full" title="تعديل">
+                      <Button onClick={() => openEditModal(u)} variant="ghost" className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-50 rounded-full" title="طھط¹ط¯ظٹظ„">
                         <Edit2 className="w-3.5 h-3.5" />
                       </Button>
-                      <Button onClick={() => setDeletingUser(u)} variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50 rounded-full" title="حذف">
+                      <Button onClick={() => setDeletingUser(u)} variant="ghost" className="h-7 w-7 p-0 text-red-600 hover:bg-red-50 rounded-full" title="ط­ط°ظپ">
                         <XCircle className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -1933,7 +1934,7 @@ function UsersView() {
               {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={9} className="text-center py-10 text-gray-400">
-                    لا يوجد مستخدمين يطابقون شروط البحث
+                    ظ„ط§ ظٹظˆط¬ط¯ ظ…ط³طھط®ط¯ظ…ظٹظ† ظٹط·ط§ط¨ظ‚ظˆظ† ط´ط±ظˆط· ط§ظ„ط¨ط­ط«
                   </td>
                 </tr>
               )}
@@ -1943,52 +1944,52 @@ function UsersView() {
         </Card>
       )}
 
-      {/* ── Add User Modal ── */}
+      {/* â”€â”€ Add User Modal â”€â”€ */}
       {isAddUserOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
           <Card className="w-full max-w-md border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <CardHeader className="bg-emerald-800 text-white flex flex-row items-center justify-between p-4">
-              <CardTitle className="text-sm font-bold">إنشاء حساب مستخدم جديد</CardTitle>
+              <CardTitle className="text-sm font-bold">ط¥ظ†ط´ط§ط، ط­ط³ط§ط¨ ظ…ط³طھط®ط¯ظ… ط¬ط¯ظٹط¯</CardTitle>
               <button onClick={() => setIsAddUserOpen(false)} className="p-1 rounded-full hover:bg-white/10 text-white"><X className="w-4 h-4" /></button>
             </CardHeader>
             <CardContent className="p-5 space-y-3 max-h-[75vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الاسم بالكامل *</Label>
-                  <Input placeholder="أسماء أحمد علي" value={fullName} onChange={e => setFullName(e.target.value)} className="h-9 text-xs border-gray-200" /></div>
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">اسم المستخدم *</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„ط§ط³ظ… ط¨ط§ظ„ظƒط§ظ…ظ„ *</Label>
+                  <Input placeholder="ط£ط³ظ…ط§ط، ط£ط­ظ…ط¯ ط¹ظ„ظٹ" value={fullName} onChange={e => setFullName(e.target.value)} className="h-9 text-xs border-gray-200" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ… *</Label>
                   <Input placeholder="nurse_shg001" value={username} onChange={e => setUsername(e.target.value)} className="h-9 text-xs border-gray-200 font-mono" dir="ltr" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">البريد الإلكتروني *</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ *</Label>
                   <Input placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">رقم الهاتف</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ</Label>
                   <Input placeholder="01xxxxxxxxx" value={phone} onChange={e => setPhone(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">كلمة المرور المؤقتة *</Label>
-                  <Input type="password" placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الصلاحية *</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط§ظ„ظ…ط¤ظ‚طھط© *</Label>
+                  <Input type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢" value={password} onChange={e => setPassword(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„طµظ„ط§ط­ظٹط© *</Label>
                   <Select value={role} onValueChange={(val: any) => setRole(val)}>
                     <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="nurse" className="text-xs">ممرض / ممرضة</SelectItem>
-                      <SelectItem value="coordinator" className="text-xs">منسق إدارة</SelectItem>
-                      <SelectItem value="supervisor" className="text-xs">منسق عام المبادرة</SelectItem>
+                      <SelectItem value="nurse" className="text-xs">ظ…ظ…ط±ط¶ / ظ…ظ…ط±ط¶ط©</SelectItem>
+                      <SelectItem value="coordinator" className="text-xs">ظ…ظ†ط³ظ‚ ط¥ط¯ط§ط±ط©</SelectItem>
+                      <SelectItem value="supervisor" className="text-xs">ظ…ظ†ط³ظ‚ ط¹ط§ظ… ط§ظ„ظ…ط¨ط§ط¯ط±ط©</SelectItem>
                     </SelectContent>
                   </Select></div>
               </div>
 
               {(role === "nurse" || role === "coordinator") && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الإدارة الصحية *</Label>
+                  <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط© *</Label>
                     <Select value={selectedDept} onValueChange={v => { setSelectedDept(v); setSelectedUnit(""); }}>
-                      <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="اختر الإدارة" /></SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="ط§ط®طھط± ط§ظ„ط¥ط¯ط§ط±ط©" /></SelectTrigger>
                       <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>)}</SelectContent>
                     </Select></div>
                   {role === "nurse" && (
-                    <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الوحدة الصحية *</Label>
+                    <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط© *</Label>
                       <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedDept}>
-                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="اختر الوحدة" /></SelectTrigger>
+                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="ط§ط®طھط± ط§ظ„ظˆط­ط¯ط©" /></SelectTrigger>
                         <SelectContent>{filteredUnits.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name}</SelectItem>)}</SelectContent>
                       </Select></div>
                   )}
@@ -1996,64 +1997,64 @@ function UsersView() {
               )}
 
               <div className="bg-amber-50 border border-amber-100 rounded-lg p-2 text-[10px] text-amber-700 font-medium">
-                ⚠ سيُطلب من المستخدم تغيير كلمة المرور عند أول تسجيل دخول
+                âڑ  ط³ظٹظڈط·ظ„ط¨ ظ…ظ† ط§ظ„ظ…ط³طھط®ط¯ظ… طھط؛ظٹظٹط± ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط± ط¹ظ†ط¯ ط£ظˆظ„ طھط³ط¬ظٹظ„ ط¯ط®ظˆظ„
               </div>
 
               <div className="flex gap-2 pt-1">
-                <Button onClick={handleAddUser} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1">إنشاء الحساب</Button>
-                <Button onClick={() => setIsAddUserOpen(false)} variant="outline" size="sm" className="flex-1">إلغاء</Button>
+                <Button onClick={handleAddUser} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1">ط¥ظ†ط´ط§ط، ط§ظ„ط­ط³ط§ط¨</Button>
+                <Button onClick={() => setIsAddUserOpen(false)} variant="outline" size="sm" className="flex-1">ط¥ظ„ط؛ط§ط،</Button>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* ── Edit User Modal ── */}
+      {/* â”€â”€ Edit User Modal â”€â”€ */}
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
           <Card className="w-full max-w-md border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <CardHeader className="bg-blue-700 text-white flex flex-row items-center justify-between p-4">
-              <CardTitle className="text-sm font-bold">تعديل بيانات: {editingUser.full_name}</CardTitle>
+              <CardTitle className="text-sm font-bold">طھط¹ط¯ظٹظ„ ط¨ظٹط§ظ†ط§طھ: {editingUser.full_name}</CardTitle>
               <button onClick={() => setEditingUser(null)} className="p-1 rounded-full hover:bg-white/10 text-white"><X className="w-4 h-4" /></button>
             </CardHeader>
             <CardContent className="p-5 space-y-3 max-h-[75vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الاسم بالكامل</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„ط§ط³ظ… ط¨ط§ظ„ظƒط§ظ…ظ„</Label>
                   <Input value={editFullName} onChange={e => setEditFullName(e.target.value)} className="h-9 text-xs border-gray-200" /></div>
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">اسم المستخدم</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ط³ظ… ط§ظ„ظ…ط³طھط®ط¯ظ…</Label>
                   <Input value={editUsername} onChange={e => setEditUsername(e.target.value)} className="h-9 text-xs border-gray-200 font-mono" dir="ltr" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">البريد الإلكتروني</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ</Label>
                   <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">رقم الهاتف</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ</Label>
                   <Input value={editPhone} onChange={e => setEditPhone(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">كلمة مرور جديدة (اختياري)</Label>
-                  <Input type="password" placeholder="اتركها فارغة إذا لا تريد التغيير" value={editPassword} onChange={e => setEditPassword(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
-                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الصلاحية</Label>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ظƒظ„ظ…ط© ظ…ط±ظˆط± ط¬ط¯ظٹط¯ط© (ط§ط®طھظٹط§ط±ظٹ)</Label>
+                  <Input type="password" placeholder="ط§طھط±ظƒظ‡ط§ ظپط§ط±ط؛ط© ط¥ط°ط§ ظ„ط§ طھط±ظٹط¯ ط§ظ„طھط؛ظٹظٹط±" value={editPassword} onChange={e => setEditPassword(e.target.value)} className="h-9 text-xs border-gray-200" dir="ltr" /></div>
+                <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„طµظ„ط§ط­ظٹط©</Label>
                   <Select value={editRole} onValueChange={(val: any) => setEditRole(val)}>
                     <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="nurse" className="text-xs">ممرض / ممرضة</SelectItem>
-                      <SelectItem value="coordinator" className="text-xs">منسق إدارة</SelectItem>
-                      <SelectItem value="supervisor" className="text-xs">منسق عام المبادرة</SelectItem>
+                      <SelectItem value="nurse" className="text-xs">ظ…ظ…ط±ط¶ / ظ…ظ…ط±ط¶ط©</SelectItem>
+                      <SelectItem value="coordinator" className="text-xs">ظ…ظ†ط³ظ‚ ط¥ط¯ط§ط±ط©</SelectItem>
+                      <SelectItem value="supervisor" className="text-xs">ظ…ظ†ط³ظ‚ ط¹ط§ظ… ط§ظ„ظ…ط¨ط§ط¯ط±ط©</SelectItem>
                     </SelectContent>
                   </Select></div>
               </div>
 
               {(editRole === "nurse" || editRole === "coordinator") && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الإدارة الصحية</Label>
+                  <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©</Label>
                     <Select value={editDept} onValueChange={v => { setEditDept(v); setEditUnit(""); }}>
-                      <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="اختر الإدارة" /></SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="ط§ط®طھط± ط§ظ„ط¥ط¯ط§ط±ط©" /></SelectTrigger>
                       <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>)}</SelectContent>
                     </Select></div>
                   {editRole === "nurse" && (
-                    <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">الوحدة الصحية</Label>
+                    <div className="space-y-1"><Label className="text-xs text-gray-600 font-bold">ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط©</Label>
                       <Select value={editUnit} onValueChange={setEditUnit} disabled={!editDept}>
-                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="اختر الوحدة" /></SelectTrigger>
+                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue placeholder="ط§ط®طھط± ط§ظ„ظˆط­ط¯ط©" /></SelectTrigger>
                         <SelectContent>{editFilteredUnits.map(u => <SelectItem key={u.id} value={u.id} className="text-xs">{u.name}</SelectItem>)}</SelectContent>
                       </Select></div>
                   )}
@@ -2061,62 +2062,62 @@ function UsersView() {
               )}
 
               <div className="space-y-1">
-                <Label className="text-xs text-gray-600 font-bold">حالة الحساب</Label>
+                <Label className="text-xs text-gray-600 font-bold">ط­ط§ظ„ط© ط§ظ„ط­ط³ط§ط¨</Label>
                 <Select value={editActive ? "active" : "inactive"} onValueChange={v => setEditActive(v === "active")}>
                   <SelectTrigger className="h-9 text-xs bg-white border-gray-200"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active" className="text-xs">نشط</SelectItem>
-                    <SelectItem value="inactive" className="text-xs">معطل</SelectItem>
+                    <SelectItem value="active" className="text-xs">ظ†ط´ط·</SelectItem>
+                    <SelectItem value="inactive" className="text-xs">ظ…ط¹ط·ظ„</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex gap-2 pt-1">
                 <Button onClick={handleEditUser} disabled={editLoading} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white flex-1">
-                  {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "حفظ التعديلات"}
+                  {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "ط­ظپط¸ ط§ظ„طھط¹ط¯ظٹظ„ط§طھ"}
                 </Button>
-                <Button onClick={() => setEditingUser(null)} variant="outline" size="sm" className="flex-1">إلغاء</Button>
+                <Button onClick={() => setEditingUser(null)} variant="outline" size="sm" className="flex-1">ط¥ظ„ط؛ط§ط،</Button>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* ── Delete Confirmation Modal ── */}
+      {/* â”€â”€ Delete Confirmation Modal â”€â”€ */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
           <Card className="w-full max-w-sm border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <CardHeader className="bg-red-600 text-white flex flex-row items-center justify-between p-4">
-              <CardTitle className="text-sm font-bold">تأكيد الحذف النهائي</CardTitle>
+              <CardTitle className="text-sm font-bold">طھط£ظƒظٹط¯ ط§ظ„ط­ط°ظپ ط§ظ„ظ†ظ‡ط§ط¦ظٹ</CardTitle>
               <button onClick={() => setDeletingUser(null)} className="p-1 rounded-full hover:bg-white/10 text-white"><X className="w-4 h-4" /></button>
             </CardHeader>
             <CardContent className="p-5 space-y-4">
               <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center space-y-2">
                 <XCircle className="w-10 h-10 text-red-500 mx-auto" />
-                <p className="text-sm font-bold text-red-800">هل أنت متأكد من حذف هذا الحساب نهائياً؟</p>
-                <p className="text-xs text-red-600">الاسم: <strong>{deletingUser.full_name}</strong></p>
-                <p className="text-xs text-red-600">البريد: <strong className="font-mono">{deletingUser.email}</strong></p>
-                <p className="text-[10px] text-red-500 mt-2">⚠ لا يمكن التراجع عن هذا الإجراء. سيتم تسجيل عملية الحذف في سجل التدقيق.</p>
+                <p className="text-sm font-bold text-red-800">ظ‡ظ„ ط£ظ†طھ ظ…طھط£ظƒط¯ ظ…ظ† ط­ط°ظپ ظ‡ط°ط§ ط§ظ„ط­ط³ط§ط¨ ظ†ظ‡ط§ط¦ظٹط§ظ‹طں</p>
+                <p className="text-xs text-red-600">ط§ظ„ط§ط³ظ…: <strong>{deletingUser.full_name}</strong></p>
+                <p className="text-xs text-red-600">ط§ظ„ط¨ط±ظٹط¯: <strong className="font-mono">{deletingUser.email}</strong></p>
+                <p className="text-[10px] text-red-500 mt-2">âڑ  ظ„ط§ ظٹظ…ظƒظ† ط§ظ„طھط±ط§ط¬ط¹ ط¹ظ† ظ‡ط°ط§ ط§ظ„ط¥ط¬ط±ط§ط،. ط³ظٹطھظ… طھط³ط¬ظٹظ„ ط¹ظ…ظ„ظٹط© ط§ظ„ط­ط°ظپ ظپظٹ ط³ط¬ظ„ ط§ظ„طھط¯ظ‚ظٹظ‚.</p>
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleDeleteUser} disabled={deleteLoading} size="sm" className="bg-red-600 hover:bg-red-700 text-white flex-1">
-                  {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "نعم، حذف نهائياً"}
+                  {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "ظ†ط¹ظ…طŒ ط­ط°ظپ ظ†ظ‡ط§ط¦ظٹط§ظ‹"}
                 </Button>
-                <Button onClick={() => setDeletingUser(null)} variant="outline" size="sm" className="flex-1">إلغاء</Button>
+                <Button onClick={() => setDeletingUser(null)} variant="outline" size="sm" className="flex-1">ط¥ظ„ط؛ط§ط،</Button>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* ── Activity Log Modal ── */}
+      {/* â”€â”€ Activity Log Modal â”€â”€ */}
       {activityUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
           <Card className="w-full max-w-lg border-0 shadow-2xl bg-white rounded-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <CardHeader className="bg-slate-800 text-white flex flex-row items-center justify-between p-4">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Activity className="w-4 h-4 text-slate-300" /> 
-                سجل نشاط المستخدم: {activityUser.full_name}
+                ط³ط¬ظ„ ظ†ط´ط§ط· ط§ظ„ظ…ط³طھط®ط¯ظ…: {activityUser.full_name}
               </CardTitle>
               <button onClick={() => setActivityUser(null)} className="p-1 rounded-full hover:bg-white/10 text-white"><X className="w-4 h-4" /></button>
             </CardHeader>
@@ -2124,40 +2125,40 @@ function UsersView() {
               {activityLoading ? (
                 <div className="flex flex-col items-center py-10 gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-                  <p className="text-xs text-gray-500">جاري تحميل السجل...</p>
+                  <p className="text-xs text-gray-500">ط¬ط§ط±ظٹ طھط­ظ…ظٹظ„ ط§ظ„ط³ط¬ظ„...</p>
                 </div>
               ) : activityData ? (
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <p className="text-[10px] text-gray-500 font-bold mb-1">تاريخ إنشاء الحساب</p>
+                      <p className="text-[10px] text-gray-500 font-bold mb-1">طھط§ط±ظٹط® ط¥ظ†ط´ط§ط، ط§ظ„ط­ط³ط§ط¨</p>
                       <p className="text-xs font-mono text-gray-800">{new Date(activityData.accountCreationDate).toLocaleString("ar-EG")}</p>
                     </div>
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <p className="text-[10px] text-gray-500 font-bold mb-1">آخر تسجيل دخول</p>
-                      <p className="text-xs font-mono text-gray-800">{activityData.lastLogin ? new Date(activityData.lastLogin).toLocaleString("ar-EG") : "—"}</p>
+                      <p className="text-[10px] text-gray-500 font-bold mb-1">ط¢ط®ط± طھط³ط¬ظٹظ„ ط¯ط®ظˆظ„</p>
+                      <p className="text-xs font-mono text-gray-800">{activityData.lastLogin ? new Date(activityData.lastLogin).toLocaleString("ar-EG") : "â€”"}</p>
                     </div>
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                      <p className="text-[10px] text-gray-500 font-bold mb-1">آخر تعديل للملف الشخصي</p>
+                      <p className="text-[10px] text-gray-500 font-bold mb-1">ط¢ط®ط± طھط¹ط¯ظٹظ„ ظ„ظ„ظ…ظ„ظپ ط§ظ„ط´ط®طµظٹ</p>
                       <p className="text-xs font-mono text-gray-800">{new Date(activityData.lastProfileUpdate).toLocaleString("ar-EG")}</p>
                     </div>
                     <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                      <p className="text-[10px] text-emerald-600 font-bold mb-1">آخر زيارة مسجلة (للمرضى)</p>
+                      <p className="text-[10px] text-emerald-600 font-bold mb-1">ط¢ط®ط± ط²ظٹط§ط±ط© ظ…ط³ط¬ظ„ط© (ظ„ظ„ظ…ط±ط¶ظ‰)</p>
                       {activityData.lastRecordedVisit ? (
                         <>
                           <p className="text-xs font-mono text-emerald-900">{new Date(activityData.lastRecordedVisit.created_at).toLocaleString("ar-EG")}</p>
                           <p className="text-[10px] text-emerald-700 truncate mt-0.5" title={activityData.lastRecordedVisit.patients?.full_name}>
-                            المريض: {activityData.lastRecordedVisit.patients?.full_name}
+                            ط§ظ„ظ…ط±ظٹط¶: {activityData.lastRecordedVisit.patients?.full_name}
                           </p>
                         </>
                       ) : (
-                        <p className="text-xs text-emerald-800">لا يوجد زيارات مسجلة بواسطة هذا المستخدم</p>
+                        <p className="text-xs text-emerald-800">ظ„ط§ ظٹظˆط¬ط¯ ط²ظٹط§ط±ط§طھ ظ…ط³ط¬ظ„ط© ط¨ظˆط§ط³ط·ط© ظ‡ط°ط§ ط§ظ„ظ…ط³طھط®ط¯ظ…</p>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-xs font-bold text-gray-700 mb-3 border-b pb-2">سجل الإجراءات والتعديلات</h4>
+                    <h4 className="text-xs font-bold text-gray-700 mb-3 border-b pb-2">ط³ط¬ظ„ ط§ظ„ط¥ط¬ط±ط§ط،ط§طھ ظˆط§ظ„طھط¹ط¯ظٹظ„ط§طھ</h4>
                     {activityData.modificationHistory.length > 0 ? (
                       <div className="space-y-2">
                         {activityData.modificationHistory.map((log: any) => (
@@ -2167,9 +2168,9 @@ function UsersView() {
                             </div>
                             <div>
                               <p className="font-bold text-gray-800">
-                                {log.action_type === "delete_user" ? "حذف مستخدم" : log.action_type}
+                                {log.action_type === "delete_user" ? "ط­ط°ظپ ظ…ط³طھط®ط¯ظ…" : log.action_type}
                               </p>
-                              <p className="text-gray-500 text-[10px] mt-0.5">بواسطة: {log.performed_by_user?.full_name || "النظام"}</p>
+                              <p className="text-gray-500 text-[10px] mt-0.5">ط¨ظˆط§ط³ط·ط©: {log.performed_by_user?.full_name || "ط§ظ„ظ†ط¸ط§ظ…"}</p>
                               <p className="text-gray-400 font-mono text-[10px] mt-0.5">{new Date(log.created_at).toLocaleString("ar-EG")}</p>
                             </div>
                           </div>
@@ -2177,7 +2178,7 @@ function UsersView() {
                       </div>
                     ) : (
                       <div className="text-center py-6 text-gray-400 bg-slate-50 rounded-xl border border-slate-100 border-dashed">
-                        <p className="text-xs">لا توجد تعديلات مسجلة في السجل</p>
+                        <p className="text-xs">ظ„ط§ طھظˆط¬ط¯ طھط¹ط¯ظٹظ„ط§طھ ظ…ط³ط¬ظ„ط© ظپظٹ ط§ظ„ط³ط¬ظ„</p>
                       </div>
                     )}
                   </div>
@@ -2192,9 +2193,9 @@ function UsersView() {
 }
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 // REGISTRATION FORM SUB-VIEW (Original NurseView)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
 function NurseView({
   isOnline,
   onPendingChange,
@@ -2218,7 +2219,7 @@ function NurseView({
   // Measurements
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
-  const [sugarType, setSugarType] = useState<"صائم" | "عشوائي" | "">("");
+  const [sugarType, setSugarType] = useState<"طµط§ط¦ظ…" | "ط¹ط´ظˆط§ط¦ظٹ" | "">("");
   const [sugarLevel, setSugarLevel] = useState("");
   const [hba1c, setHba1c] = useState("");
   const [systolic, setSystolic] = useState("");
@@ -2312,12 +2313,12 @@ function NurseView({
   }, [nationalId]);
 
   const handleSubmit = async () => {
-    if (!selectedDept || !selectedUnit) { toast.error("يرجى اختيار الإدارة والوحدة الصحية"); return; }
+    if (!selectedDept || !selectedUnit) { toast.error("ظٹط±ط¬ظ‰ ط§ط®طھظٹط§ط± ط§ظ„ط¥ط¯ط§ط±ط© ظˆط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط©"); return; }
     if (!fullName || fullName.trim().split(" ").length < 3) {
-      toast.error("يرجى إدخال اسم المريض ثلاثي على الأقل");
+      toast.error("ظٹط±ط¬ظ‰ ط¥ط¯ط®ط§ظ„ ط§ط³ظ… ط§ظ„ظ…ط±ظٹط¶ ط«ظ„ط§ط«ظٹ ط¹ظ„ظ‰ ط§ظ„ط£ظ‚ظ„");
       return;
     }
-    if (!idInfo || !idInfo.valid) { toast.error("يرجى إدخال رقم قومي صحيح مكون من 14 رقماً"); return; }
+    if (!idInfo || !idInfo.valid) { toast.error("ظٹط±ط¬ظ‰ ط¥ط¯ط®ط§ظ„ ط±ظ‚ظ… ظ‚ظˆظ…ظٹ طµط­ظٹط­ ظ…ظƒظˆظ† ظ…ظ† 14 ط±ظ‚ظ…ط§ظ‹"); return; }
 
     const payload: VisitSubmission = {
       nationalId,
@@ -2346,7 +2347,7 @@ function NurseView({
     try {
       if (!isOnline) {
         addToQueue(payload);
-        toast.info("تم حفظ الزيارة محلياً بجهازك وسيتم إرسالها بمجرد عودة الاتصال");
+        toast.info("طھظ… ط­ظپط¸ ط§ظ„ط²ظٹط§ط±ط© ظ…ط­ظ„ظٹط§ظ‹ ط¨ط¬ظ‡ط§ط²ظƒ ظˆط³ظٹطھظ… ط¥ط±ط³ط§ظ„ظ‡ط§ ط¨ظ…ط¬ط±ط¯ ط¹ظˆط¯ط© ط§ظ„ط§طھطµط§ظ„");
         onPendingChange(loadQueue().length);
         resetForm();
       } else {
@@ -2356,13 +2357,13 @@ function NurseView({
           body: JSON.stringify(payload),
         });
         const body = await res.json();
-        if (!res.ok) throw new Error(body.error || "خطأ غير معروف");
+        if (!res.ok) throw new Error(body.error || "ط®ط·ط£ ط؛ظٹط± ظ…ط¹ط±ظˆظپ");
 
-        toast.success(body.message || "تم تسجيل الزيارة بنجاح");
+        toast.success(body.message || "طھظ… طھط³ط¬ظٹظ„ ط§ظ„ط²ظٹط§ط±ط© ط¨ظ†ط¬ط§ط­");
         resetForm();
       }
     } catch (e: any) {
-      toast.error("فشل تسجيل الزيارة", { description: e.message });
+      toast.error("ظپط´ظ„ طھط³ط¬ظٹظ„ ط§ظ„ط²ظٹط§ط±ط©", { description: e.message });
     } finally {
       setSubmitting(false);
     }
@@ -2394,30 +2395,30 @@ function NurseView({
 
   return (
     <div className="space-y-4 max-w-lg mx-auto">
-      {/* ── Section: Health Facility ── */}
+      {/* â”€â”€ Section: Health Facility â”€â”€ */}
       {profile.role === "nurse" && profile.unit_id && profile.department_id ? (
         <div className="bg-emerald-50/80 backdrop-blur-md border border-emerald-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
           <div>
-            <p className="text-[10px] text-emerald-700 font-bold">الوحدة الصحية المسجل بها</p>
+            <p className="text-[10px] text-emerald-700 font-bold">ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط© ط§ظ„ظ…ط³ط¬ظ„ ط¨ظ‡ط§</p>
             <h3 className="text-sm font-extrabold text-emerald-950 mt-1">
-              {assignedUnitName || "وحدة صحية سوهاج"}
+              {assignedUnitName || "ظˆط­ط¯ط© طµط­ظٹط© ط³ظˆظ‡ط§ط¬"}
             </h3>
             <p className="text-[10px] text-emerald-600/80 mt-0.5">
-              الإدارة: {departments.find(d => d.id === selectedDept)?.name || "تحميل الإدارة..."}
+              ط§ظ„ط¥ط¯ط§ط±ط©: {departments.find(d => d.id === selectedDept)?.name || "طھط­ظ…ظٹظ„ ط§ظ„ط¥ط¯ط§ط±ط©..."}
             </p>
           </div>
           <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white px-2.5 py-0.5 text-[10px] border-0">
-            مؤمن
+            ظ…ط¤ظ…ظ†
           </Badge>
         </div>
       ) : (
         <Card className="border-0 shadow-md bg-white">
           <CardContent className="p-4 space-y-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-700">الإدارة الصحية *</Label>
+              <Label className="text-xs font-semibold text-gray-700">ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط© *</Label>
               <Select value={selectedDept} onValueChange={setSelectedDept}>
                 <SelectTrigger className="h-10 text-xs bg-white border-gray-200 focus:border-emerald-500">
-                  <SelectValue placeholder="اختر الإدارة الصحية" />
+                  <SelectValue placeholder="ط§ط®طھط± ط§ظ„ط¥ط¯ط§ط±ط© ط§ظ„طµط­ظٹط©" />
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map(d => (
@@ -2430,10 +2431,10 @@ function NurseView({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-700">الوحدة الصحية التابعة *</Label>
+              <Label className="text-xs font-semibold text-gray-700">ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط© ط§ظ„طھط§ط¨ط¹ط© *</Label>
               <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedDept}>
                 <SelectTrigger className="h-10 text-xs bg-white border-gray-200 focus:border-emerald-500">
-                  <SelectValue placeholder="اختر الوحدة الصحية" />
+                  <SelectValue placeholder="ط§ط®طھط± ط§ظ„ظˆط­ط¯ط© ط§ظ„طµط­ظٹط©" />
                 </SelectTrigger>
                 <SelectContent>
                   {units.map(u => (
@@ -2448,22 +2449,22 @@ function NurseView({
         </Card>
       )}
 
-      {/* ── Section: Patient Info ── */}
+      {/* â”€â”€ Section: Patient Info â”€â”€ */}
       <Card className="border-0 shadow-md bg-white">
         <CardHeader className="bg-slate-50 border-b border-gray-100 py-3.5 px-4 flex-row items-center gap-2">
           <div className="p-1.5 bg-emerald-50 rounded-lg">
             <Users className="w-4 h-4 text-emerald-600" />
           </div>
-          <CardTitle className="text-xs font-bold text-gray-700">بيانات المريض الأساسية</CardTitle>
+          <CardTitle className="text-xs font-bold text-gray-700">ط¨ظٹط§ظ†ط§طھ ط§ظ„ظ…ط±ظٹط¶ ط§ظ„ط£ط³ط§ط³ظٹط©</CardTitle>
         </CardHeader>
         <CardContent className="p-4 space-y-4">
           {/* National ID */}
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
-              <Label className="text-xs font-semibold text-gray-700">الرقم القومي (14 رقم) *</Label>
+              <Label className="text-xs font-semibold text-gray-700">ط§ظ„ط±ظ‚ظ… ط§ظ„ظ‚ظˆظ…ظٹ (14 ط±ظ‚ظ…) *</Label>
               {idInfo && (
                 <span className={`text-[10px] font-bold ${idInfo.valid ? "text-emerald-600" : "text-red-500"}`}>
-                  {idInfo.valid ? "رقم قومي مطابق ✓" : idInfo.error}
+                  {idInfo.valid ? "ط±ظ‚ظ… ظ‚ظˆظ…ظٹ ظ…ط·ط§ط¨ظ‚ âœ“" : idInfo.error}
                 </span>
               )}
             </div>
@@ -2483,18 +2484,18 @@ function NurseView({
           {/* Decoded Info Chips */}
           {idInfo?.valid && (
             <div className="grid grid-cols-3 gap-2 bg-emerald-50/40 p-3 rounded-xl border border-emerald-100/50">
-              <InfoChip label="تاريخ الميلاد" value={formatBirthDate(idInfo.birthDate!)} />
-              <InfoChip label="السن" value={`${idInfo.age} سنة`} />
-              <InfoChip label="النوع" value={idInfo.gender!} />
-              <InfoChip label="محافظة الميلاد" value={idInfo.governorate!} full />
+              <InfoChip label="طھط§ط±ظٹط® ط§ظ„ظ…ظٹظ„ط§ط¯" value={formatBirthDate(idInfo.birthDate!)} />
+              <InfoChip label="ط§ظ„ط³ظ†" value={`${idInfo.age} ط³ظ†ط©`} />
+              <InfoChip label="ط§ظ„ظ†ظˆط¹" value={idInfo.gender!} />
+              <InfoChip label="ظ…ط­ط§ظپط¸ط© ط§ظ„ظ…ظٹظ„ط§ط¯" value={idInfo.governorate!} full />
             </div>
           )}
 
           {/* Full Name */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-gray-700">الاسم رباعي *</Label>
+            <Label className="text-xs font-semibold text-gray-700">ط§ظ„ط§ط³ظ… ط±ط¨ط§ط¹ظٹ *</Label>
             <Input
-              placeholder="الاسم كامل كما بالبطاقة"
+              placeholder="ط§ظ„ط§ط³ظ… ظƒط§ظ…ظ„ ظƒظ…ط§ ط¨ط§ظ„ط¨ط·ط§ظ‚ط©"
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               className="h-11 text-sm border-gray-200 focus:border-emerald-500"
@@ -2503,7 +2504,7 @@ function NurseView({
 
           {/* Phone */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-gray-700">رقم الهاتف (اختياري)</Label>
+            <Label className="text-xs font-semibold text-gray-700">ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ (ط§ط®طھظٹط§ط±ظٹ)</Label>
             <Input
               placeholder="01xxxxxxxxx"
               value={phone}
@@ -2516,76 +2517,76 @@ function NurseView({
         </CardContent>
       </Card>
 
-      {/* ── Section: Measurements ── */}
+      {/* â”€â”€ Section: Measurements â”€â”€ */}
       <Card className="border-0 shadow-md bg-white">
         <CardHeader className="bg-slate-50 border-b border-gray-100 py-3.5 px-4 flex-row items-center gap-2">
           <div className="p-1.5 bg-emerald-50 rounded-lg">
             <Activity className="w-4 h-4 text-emerald-600" />
           </div>
-          <CardTitle className="text-xs font-bold text-gray-700">القياسات والتحاليل الطبية</CardTitle>
+          <CardTitle className="text-xs font-bold text-gray-700">ط§ظ„ظ‚ظٹط§ط³ط§طھ ظˆط§ظ„طھط­ط§ظ„ظٹظ„ ط§ظ„ط·ط¨ظٹط©</CardTitle>
         </CardHeader>
         <CardContent className="p-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <MeasureInput label="الوزن (كجم)" value={weight} onChange={setWeight} placeholder="75" />
-            <MeasureInput label="الطول (سم)" value={height} onChange={setHeight} placeholder="170" />
+            <MeasureInput label="ط§ظ„ظˆط²ظ† (ظƒط¬ظ…)" value={weight} onChange={setWeight} placeholder="75" />
+            <MeasureInput label="ط§ظ„ط·ظˆظ„ (ط³ظ…)" value={height} onChange={setHeight} placeholder="170" />
           </div>
 
           <div className="border-t border-gray-100 my-2 pt-3">
             <p className="text-[11px] font-bold text-emerald-800 mb-2.5 flex items-center gap-1.5">
               <Droplets className="w-3.5 h-3.5" />
-              مستوى سكر الدم
+              ظ…ط³طھظˆظ‰ ط³ظƒط± ط§ظ„ط¯ظ…
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[11px] text-gray-500">نوع التحليل</Label>
+                <Label className="text-[11px] text-gray-500">ظ†ظˆط¹ ط§ظ„طھط­ظ„ظٹظ„</Label>
                 <Select value={sugarType} onValueChange={(v: any) => setSugarType(v)}>
                   <SelectTrigger className="h-9 text-xs bg-white border-gray-200">
-                    <SelectValue placeholder="اختر النوع" />
+                    <SelectValue placeholder="ط§ط®طھط± ط§ظ„ظ†ظˆط¹" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="صائم" className="text-xs">صائم</SelectItem>
-                    <SelectItem value="عشوائي" className="text-xs">عشوائي</SelectItem>
+                    <SelectItem value="طµط§ط¦ظ…" className="text-xs">طµط§ط¦ظ…</SelectItem>
+                    <SelectItem value="ط¹ط´ظˆط§ط¦ظٹ" className="text-xs">ط¹ط´ظˆط§ط¦ظٹ</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <MeasureInput label="القياس (mg/dL)" value={sugarLevel} onChange={setSugarLevel} placeholder="120" />
+              <MeasureInput label="ط§ظ„ظ‚ظٹط§ط³ (mg/dL)" value={sugarLevel} onChange={setSugarLevel} placeholder="120" />
             </div>
             <div className="mt-3">
-              <MeasureInput label="سكر تراكمي HbA1c (%)" value={hba1c} onChange={setHba1c} placeholder="5.7" />
+              <MeasureInput label="ط³ظƒط± طھط±ط§ظƒظ…ظٹ HbA1c (%)" value={hba1c} onChange={setHba1c} placeholder="5.7" />
             </div>
           </div>
 
           <div className="border-t border-gray-100 my-2 pt-3">
             <p className="text-[11px] font-bold text-emerald-800 mb-2 flex items-center gap-1.5">
               <Stethoscope className="w-3.5 h-3.5" />
-              ضغط الدم
+              ط¶ط؛ط· ط§ظ„ط¯ظ…
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <MeasureInput label="الانقباضي Systolic (العالي)" value={systolic} onChange={setSystolic} placeholder="120" />
-              <MeasureInput label="الانبساطي Diastolic (الواطي)" value={diastolic} onChange={setDiastolic} placeholder="80" />
+              <MeasureInput label="ط§ظ„ط§ظ†ظ‚ط¨ط§ط¶ظٹ Systolic (ط§ظ„ط¹ط§ظ„ظٹ)" value={systolic} onChange={setSystolic} placeholder="120" />
+              <MeasureInput label="ط§ظ„ط§ظ†ط¨ط³ط§ط·ظٹ Diastolic (ط§ظ„ظˆط§ط·ظٹ)" value={diastolic} onChange={setDiastolic} placeholder="80" />
             </div>
           </div>
 
           <div className="border-t border-gray-100 my-2 pt-3">
             <p className="text-[11px] font-bold text-emerald-800 mb-2 flex items-center gap-1.5">
               <FlaskConical className="w-3.5 h-3.5" />
-              وظائف الكلى والدهون
+              ظˆط¸ط§ط¦ظپ ط§ظ„ظƒظ„ظ‰ ظˆط§ظ„ط¯ظ‡ظˆظ†
             </p>
             <Collapsible>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="w-full justify-between h-8 text-[11px] text-gray-500 hover:text-emerald-700 bg-slate-50 px-2 rounded-lg">
-                  <span>إدخال دهون الدم ووظائف الكلى</span>
+                  <span>ط¥ط¯ط®ط§ظ„ ط¯ظ‡ظˆظ† ط§ظ„ط¯ظ… ظˆظˆط¸ط§ط¦ظپ ط§ظ„ظƒظ„ظ‰</span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <MeasureInput label="الكوليسترول الكلي" value={cholesterol} onChange={setCholesterol} placeholder="180" />
-                  <MeasureInput label="الدهون الثلاثية" value={triglycerides} onChange={setTriglycerides} placeholder="150" />
-                  <MeasureInput label="الكوليسترول الضار LDL" value={ldl} onChange={setLdl} placeholder="100" />
-                  <MeasureInput label="الكوليسترول النافع HDL" value={hdl} onChange={setHdl} placeholder="50" />
-                  <MeasureInput label="الكرياتينين بالدم" value={creatinine} onChange={setCreatinine} placeholder="0.9" />
-                  <MeasureInput label="معدل الترشيح eGFR" value={egfr} onChange={setEgfr} placeholder="90" />
+                  <MeasureInput label="ط§ظ„ظƒظˆظ„ظٹط³طھط±ظˆظ„ ط§ظ„ظƒظ„ظٹ" value={cholesterol} onChange={setCholesterol} placeholder="180" />
+                  <MeasureInput label="ط§ظ„ط¯ظ‡ظˆظ† ط§ظ„ط«ظ„ط§ط«ظٹط©" value={triglycerides} onChange={setTriglycerides} placeholder="150" />
+                  <MeasureInput label="ط§ظ„ظƒظˆظ„ظٹط³طھط±ظˆظ„ ط§ظ„ط¶ط§ط± LDL" value={ldl} onChange={setLdl} placeholder="100" />
+                  <MeasureInput label="ط§ظ„ظƒظˆظ„ظٹط³طھط±ظˆظ„ ط§ظ„ظ†ط§ظپط¹ HDL" value={hdl} onChange={setHdl} placeholder="50" />
+                  <MeasureInput label="ط§ظ„ظƒط±ظٹط§طھظٹظ†ظٹظ† ط¨ط§ظ„ط¯ظ…" value={creatinine} onChange={setCreatinine} placeholder="0.9" />
+                  <MeasureInput label="ظ…ط¹ط¯ظ„ ط§ظ„طھط±ط´ظٹط­ eGFR" value={egfr} onChange={setEgfr} placeholder="90" />
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -2593,13 +2594,13 @@ function NurseView({
         </CardContent>
       </Card>
 
-      {/* ── Section: Referral ── */}
+      {/* â”€â”€ Section: Referral â”€â”€ */}
       <Card className="border-0 shadow-md bg-white">
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-xs font-bold text-gray-700">إحالة إلى مستوى طبي أعلى</Label>
-              <p className="text-[10px] text-gray-400">إذا كانت القياسات مرتفعة جداً وتتطلب استشارة طبيب أخصائي</p>
+              <Label className="text-xs font-bold text-gray-700">ط¥ط­ط§ظ„ط© ط¥ظ„ظ‰ ظ…ط³طھظˆظ‰ ط·ط¨ظٹ ط£ط¹ظ„ظ‰</Label>
+              <p className="text-[10px] text-gray-400">ط¥ط°ط§ ظƒط§ظ†طھ ط§ظ„ظ‚ظٹط§ط³ط§طھ ظ…ط±طھظپط¹ط© ط¬ط¯ط§ظ‹ ظˆطھطھط·ظ„ط¨ ط§ط³طھط´ط§ط±ط© ط·ط¨ظٹط¨ ط£ط®طµط§ط¦ظٹ</p>
             </div>
             <input
               type="checkbox"
@@ -2611,9 +2612,9 @@ function NurseView({
 
           {referred && (
             <div className="space-y-1.5 border-t border-gray-50 pt-3 animate-in fade-in slide-in-from-top-1 duration-200">
-              <Label className="text-xs font-semibold text-gray-700">جهة التحويل / المستشفى *</Label>
+              <Label className="text-xs font-semibold text-gray-700">ط¬ظ‡ط© ط§ظ„طھط­ظˆظٹظ„ / ط§ظ„ظ…ط³طھط´ظپظ‰ *</Label>
               <Input
-                placeholder="مثال: مستشفى سوهاج العام"
+                placeholder="ظ…ط«ط§ظ„: ظ…ط³طھط´ظپظ‰ ط³ظˆظ‡ط§ط¬ ط§ظ„ط¹ط§ظ…"
                 value={referralDest}
                 onChange={e => setReferralDest(e.target.value)}
                 className="h-10 text-sm border-gray-200 focus:border-emerald-500"
@@ -2623,7 +2624,7 @@ function NurseView({
         </CardContent>
       </Card>
 
-      {/* ── Submit ── */}
+      {/* â”€â”€ Submit â”€â”€ */}
       <Button
         onClick={handleSubmit}
         disabled={submitting}
@@ -2632,17 +2633,17 @@ function NurseView({
         {submitting ? (
           <div className="flex items-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin text-white" />
-            <span>جارٍ التسجيل...</span>
+            <span>ط¬ط§ط±ظچ ط§ظ„طھط³ط¬ظٹظ„...</span>
           </div>
         ) : isOnline ? (
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-white" />
-            <span>تسجيل زيارة المريض</span>
+            <span>طھط³ط¬ظٹظ„ ط²ظٹط§ط±ط© ط§ظ„ظ…ط±ظٹط¶</span>
           </div>
         ) : (
           <div className="flex items-center gap-2">
             <WifiOff className="w-4 h-4 text-white" />
-            <span>حفظ محلياً (غير متصل)</span>
+            <span>ط­ظپط¸ ظ…ط­ظ„ظٹط§ظ‹ (ط؛ظٹط± ظ…طھطµظ„)</span>
           </div>
         )}
       </Button>
@@ -2650,7 +2651,7 @@ function NurseView({
   );
 }
 
-// ── Helper Components ──────────────────────────────────────────────────────────
+// â”€â”€ Helper Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function InfoChip({ label, value, full }: { label: string; value: string; full?: boolean }) {
   return (
     <div className={`bg-white rounded-lg px-2 py-1.5 border border-emerald-100 ${full ? "col-span-3" : ""}`}>
@@ -2679,267 +2680,5 @@ function MeasureInput({ label, value, onChange, placeholder }: {
     </div>
   );
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// SUPERVISOR DASHBOARD VIEW
-// ═══════════════════════════════════════════════════════════════════════════════
-function SupervisorDashboard({ onLogout }: { onLogout: () => void }) {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [units, setUnits] = useState<UnitStats[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [openDepts, setOpenDepts] = useState<Record<string, boolean>>({});
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await resilientFetch<{ stats: DashboardStats; units: UnitStats[] }>("/api/dashboard");
-      setStats(data.stats);
-      setUnits(data.units);
-      const deptMap: Record<string, boolean> = {};
-      data.units.forEach(u => { deptMap[u.department_id] = true; });
-      setOpenDepts(deptMap);
-    } catch (err: any) {
-      toast.error("فشل تحميل البيانات", { description: err.message });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const deptGroups = units.reduce<Record<string, UnitStats[]>>((acc, u) => {
-    if (!acc[u.department_id]) acc[u.department_id] = [];
-    acc[u.department_id].push(u);
-    return acc;
-  }, {});
-
-  const filteredGroups = Object.entries(deptGroups).reduce<Record<string, UnitStats[]>>((acc, [deptId, deptUnits]) => {
-    const filtered = deptUnits.filter(u =>
-      !search || u.name.includes(search) || u.code.toLowerCase().includes(search.toLowerCase())
-    );
-    if (filtered.length > 0) acc[deptId] = filtered;
-    return acc;
-  }, {});
-
-  return (
-    <div className="space-y-4">
-      {/* Header Row */}
-      <div className="flex items-center justify-between bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-        <div>
-          <h2 className="text-xs font-bold text-gray-500">إحصائيات مبادرة الأمراض المزمنة</h2>
-        </div>
-        <Button
-          onClick={loadData}
-          variant="outline"
-          size="sm"
-          disabled={loading}
-          className="h-8 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ml-1 ${loading ? "animate-spin" : ""}`} />
-          تحديث الإحصائيات
-        </Button>
-      </div>
-
-      {loading && !stats ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          <p className="text-xs text-gray-400">جارٍ تحميل البيانات...</p>
-        </div>
-      ) : stats ? (
-        <>
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard
-              icon={<Users className="w-5 h-5" />}
-              label="إجمالي المرضى"
-              value={stats.totalPatients.toLocaleString("ar-EG")}
-              color="emerald"
-            />
-            <StatCard
-              icon={<ClipboardList className="w-5 h-5" />}
-              label="إجمالي الزيارات"
-              value={stats.totalVisits.toLocaleString("ar-EG")}
-              color="teal"
-            />
-            <StatCard
-              icon={<Calendar className="w-5 h-5" />}
-              label="زيارات اليوم"
-              value={stats.todayVisits.toLocaleString("ar-EG")}
-              color="blue"
-            />
-            <StatCard
-              icon={<Building2 className="w-5 h-5" />}
-              label="الوحدات النشطة"
-              value={stats.activeUnits.toLocaleString("ar-EG")}
-              color="purple"
-            />
-          </div>
-
-          {/* Summary Card */}
-          <Card className="border-0 shadow-md bg-white">
-            <CardContent className="px-4 py-3">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <SummaryItem label="مرضى جدد" value={stats.newPatients} color="emerald" />
-                <SummaryItem label="مترددون" value={stats.returningPatients} color="blue" />
-                <SummaryItem label="محولون (إحالة)" value={stats.referrals} color="amber" />
-                <SummaryItem label="وحدات غير نشطة" value={stats.inactiveUnits} color="red" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="ابحث عن وحدة صحية..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="h-10 text-xs pr-10 border-gray-200 focus:border-emerald-500 bg-white"
-            />
-          </div>
-
-          {/* Departments with Units */}
-          <div className="space-y-3">
-            {Object.entries(filteredGroups).map(([deptId, deptUnits]) => {
-              const deptName = deptUnits[0]?.department_name || "قسم غير محدد";
-              const isOpen = openDepts[deptId] !== false;
-              const totalToday = deptUnits.reduce((s, u) => s + u.today_visits, 0);
-              const totalTarget = deptUnits.reduce((s, u) => s + u.daily_target, 0);
-
-              return (
-                <Collapsible
-                  key={deptId}
-                  open={isOpen}
-                  onOpenChange={open => setOpenDepts(prev => ({ ...prev, [deptId]: open }))}
-                >
-                  <Card className="border-0 shadow-md bg-white overflow-hidden">
-                    <CollapsibleTrigger asChild>
-                      <button className="w-full px-4 py-3 flex items-center justify-between hover:bg-emerald-50/55 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span className="font-bold text-xs text-gray-800">{deptName}</span>
-                          <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700">
-                            {deptUnits.length} وحدة
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] font-bold text-gray-500">
-                            {totalToday}/{totalTarget} اليوم
-                          </span>
-                          {isOpen ? (
-                            <ChevronUp className="w-4 h-4 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
-                          )}
-                        </div>
-                      </button>
-                    </CollapsibleTrigger>
-
-                    <CollapsibleContent>
-                      <div className="px-4 pb-3 space-y-2 border-t border-gray-50 pt-2 bg-slate-50/40">
-                        {deptUnits.map(unit => {
-                          const pct = unit.daily_target > 0
-                            ? Math.min(100, Math.round((unit.today_visits / unit.daily_target) * 100))
-                            : 0;
-                          const progressClass = pct >= 80 ? "progress-high" : pct >= 40 ? "progress-medium" : "progress-low";
-
-                          return (
-                            <div key={unit.id} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex flex-col gap-2">
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    <span className="text-[9px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                                      {unit.code}
-                                    </span>
-                                    {!unit.active && (
-                                      <Badge variant="destructive" className="text-[8px] px-1.5 py-0">
-                                        غير نشطة
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <p className="text-xs font-bold text-gray-800 leading-tight">
-                                    {unit.name}
-                                  </p>
-                                </div>
-                                <div className="text-left ml-1 shrink-0">
-                                  <p className={`text-sm font-black ${
-                                    pct >= 80 ? "text-emerald-600" : pct >= 40 ? "text-amber-600" : "text-red-600"
-                                  }`}>
-                                    {unit.today_visits}
-                                  </p>
-                                  <p className="text-[8px] text-gray-400">من {unit.daily_target}</p>
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                <div className={`${progressClass}`}>
-                                  <Progress value={pct} className="h-1.5" />
-                                </div>
-                                <div className="flex justify-between text-[9px] text-gray-400">
-                                  <span>{pct}% من الهدف اليومي</span>
-                                  <span className="font-semibold text-emerald-800">الشهر: {unit.month_visits} زيارة</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              );
-            })}
-          </div>
-
-          {Object.keys(filteredGroups).length === 0 && search && (
-            <div className="text-center py-12 text-gray-400 bg-white rounded-2xl shadow-sm">
-              <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-xs">لا توجد نتائج لـ "{search}"</p>
-            </div>
-          )}
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value, color }: {
-  icon: React.ReactNode; label: string; value: string; color: string;
-}) {
-  const colorMap: Record<string, string> = {
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100/50",
-    teal: "bg-teal-50 text-teal-600 border-teal-100/50",
-    blue: "bg-blue-50 text-blue-600 border-blue-100/50",
-    purple: "bg-purple-50 text-purple-600 border-purple-100/50",
-  };
-  const iconClass = colorMap[color] || colorMap.emerald;
-
-  return (
-    <Card className="border-0 shadow-md bg-white card-hover">
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className={`p-2.5 rounded-xl border shrink-0 ${iconClass}`}>
-          {icon}
-        </div>
-        <div>
-          <p className="text-xs text-gray-500 font-semibold">{label}</p>
-          <p className="text-lg font-black text-gray-800 leading-none mt-1.5">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SummaryItem({ label, value, color }: { label: string; value: number; color: string }) {
-  const colorMap: Record<string, string> = {
-    emerald: "text-emerald-700 bg-emerald-50",
-    blue: "text-blue-700 bg-blue-50",
-    amber: "text-amber-700 bg-amber-50",
-    red: "text-red-700 bg-red-50",
-  };
-  return (
-    <div className={`rounded-xl p-2.5 flex items-center justify-between ${colorMap[color] || ""}`}>
-      <span className="text-[10px] font-bold">{label}</span>
-      <span className="text-xs font-black">{value.toLocaleString("ar-EG")}</span>
-    </div>
-  );
-}
+// SupervisorDashboard, StatCard, SummaryItem moved to:
+// components/dashboard/SupervisorDashboard.tsx
